@@ -1,0 +1,17 @@
+{
+  "name": "OrthoAlign",
+  "short_name": "OrthoAlign",
+  "description": "Sistema de gestão de alinhadores ortodônticos invisíveis",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0066CC",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}

@@ -149,7 +149,7 @@ export default function DentistDashboard() {
               const status = getPatientStatus(patient);
               const config = statusConfig[status];
               const StatusIcon = config.icon;
-              const progress = Math.round((patient.currentAligner / patient.totalAligners) * 100);
+              const progress = Math.round(((patient.currentUpperAligner + patient.currentLowerAligner) / (patient.upperAligners + patient.lowerAligners)) * 100);
 
               return (
                 <motion.div
@@ -173,7 +173,7 @@ export default function DentistDashboard() {
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground mb-2">
-                        Alinhador {patient.currentAligner} de {patient.totalAligners}
+                        Sup: {patient.currentUpperAligner}/{patient.upperAligners} • Inf: {patient.currentLowerAligner}/{patient.lowerAligners}
                       </p>
                       
                       {/* Progress bar */}

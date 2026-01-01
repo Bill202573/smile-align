@@ -23,6 +23,8 @@ import {
   Users,
   Settings,
   Layers,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 
 type ArchType = 'upper' | 'lower' | 'both';
@@ -44,10 +46,12 @@ export default function AdminDashboard() {
     email: '',
     phone: '',
     address: '',
-    totalAligners: 24,
+    upperAligners: 24,
+    lowerAligners: 20,
     daysPerAligner: 14,
     arch: 'both' as ArchType,
-    currentAligner: 1,
+    currentUpperAligner: 1,
+    currentLowerAligner: 1,
     startDate: new Date().toISOString().split('T')[0],
     dentistId: '2',
     dentistName: 'Dr. João Santos',
@@ -67,9 +71,11 @@ export default function AdminDashboard() {
     
     addPatient({
       ...formData,
-      totalAligners: Number(formData.totalAligners),
+      upperAligners: Number(formData.upperAligners),
+      lowerAligners: Number(formData.lowerAligners),
       daysPerAligner: Number(formData.daysPerAligner),
-      currentAligner: Number(formData.currentAligner),
+      currentUpperAligner: Number(formData.currentUpperAligner),
+      currentLowerAligner: Number(formData.currentLowerAligner),
     });
     
     setIsSubmitting(false);
@@ -84,10 +90,12 @@ export default function AdminDashboard() {
         email: '',
         phone: '',
         address: '',
-        totalAligners: 24,
+        upperAligners: 24,
+        lowerAligners: 20,
         daysPerAligner: 14,
         arch: 'both',
-        currentAligner: 1,
+        currentUpperAligner: 1,
+        currentLowerAligner: 1,
         startDate: new Date().toISOString().split('T')[0],
         dentistId: '2',
         dentistName: 'Dr. João Santos',
@@ -183,12 +191,12 @@ export default function AdminDashboard() {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-foreground truncate">{patient.fullName}</h3>
                       <p className="text-sm text-muted-foreground">
-                        Alinhador {patient.currentAligner} de {patient.totalAligners} • {patient.dentistName}
+                        Sup: {patient.currentUpperAligner}/{patient.upperAligners} • Inf: {patient.currentLowerAligner}/{patient.lowerAligners} • {patient.dentistName}
                       </p>
                     </div>
                     <div className="text-right">
                       <div className="text-sm font-medium text-accent">
-                        {Math.round((patient.currentAligner / patient.totalAligners) * 100)}%
+                        {Math.round(((patient.currentUpperAligner + patient.currentLowerAligner) / (patient.upperAligners + patient.lowerAligners)) * 100)}%
                       </div>
                       <div className="text-xs text-muted-foreground">progresso</div>
                     </div>
@@ -335,19 +343,20 @@ export default function AdminDashboard() {
                       Dados do Tratamento
                     </h3>
                     
-                    <div className="grid gap-4 md:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <Label htmlFor="totalAligners">Total de Alinhadores</Label>
-                        <Input
-                          id="totalAligners"
-                          name="totalAligners"
-                          type="number"
-                          min="1"
-                          max="100"
-                          value={formData.totalAligners}
+                        <Label htmlFor="arch">Arcada</Label>
+                        <select
+                          id="arch"
+                          name="arch"
+                          value={formData.arch}
                           onChange={handleInputChange}
-                          required
-                        />
+                          className="flex h-12 w-full rounded-xl border-2 border-input bg-background px-4 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary"
+                        >
+                          <option value="upper">Superior</option>
+                          <option value="lower">Inferior</option>
+                          <option value="both">Ambas</option>
+                        </select>
                       </div>
 
                       <div className="space-y-2">
@@ -363,34 +372,81 @@ export default function AdminDashboard() {
                           required
                         />
                       </div>
+                    </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="currentAligner">Alinhador Inicial</Label>
-                        <Input
-                          id="currentAligner"
-                          name="currentAligner"
-                          type="number"
-                          min="1"
-                          value={formData.currentAligner}
-                          onChange={handleInputChange}
-                          required
-                        />
+                    {/* Upper Arch Fields */}
+                    {(formData.arch === 'upper' || formData.arch === 'both') && (
+                      <div className="p-4 bg-primary/5 rounded-xl space-y-4">
+                        <h4 className="text-sm font-semibold text-primary flex items-center gap-2">
+                          <ArrowUp className="w-4 h-4" /> Arcada Superior
+                        </h4>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="upperAligners">Total de Alinhadores</Label>
+                            <Input
+                              id="upperAligners"
+                              name="upperAligners"
+                              type="number"
+                              min="1"
+                              max="100"
+                              value={formData.upperAligners}
+                              onChange={handleInputChange}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="currentUpperAligner">Alinhador Inicial</Label>
+                            <Input
+                              id="currentUpperAligner"
+                              name="currentUpperAligner"
+                              type="number"
+                              min="1"
+                              value={formData.currentUpperAligner}
+                              onChange={handleInputChange}
+                              required
+                            />
+                          </div>
+                        </div>
                       </div>
+                    )}
 
-                      <div className="space-y-2">
-                        <Label htmlFor="arch">Arcada</Label>
-                        <select
-                          id="arch"
-                          name="arch"
-                          value={formData.arch}
-                          onChange={handleInputChange}
-                          className="flex h-12 w-full rounded-xl border-2 border-input bg-background px-4 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary"
-                        >
-                          <option value="upper">Superior</option>
-                          <option value="lower">Inferior</option>
-                          <option value="both">Ambas</option>
-                        </select>
+                    {/* Lower Arch Fields */}
+                    {(formData.arch === 'lower' || formData.arch === 'both') && (
+                      <div className="p-4 bg-accent/5 rounded-xl space-y-4">
+                        <h4 className="text-sm font-semibold text-accent flex items-center gap-2">
+                          <ArrowDown className="w-4 h-4" /> Arcada Inferior
+                        </h4>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="lowerAligners">Total de Alinhadores</Label>
+                            <Input
+                              id="lowerAligners"
+                              name="lowerAligners"
+                              type="number"
+                              min="1"
+                              max="100"
+                              value={formData.lowerAligners}
+                              onChange={handleInputChange}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="currentLowerAligner">Alinhador Inicial</Label>
+                            <Input
+                              id="currentLowerAligner"
+                              name="currentLowerAligner"
+                              type="number"
+                              min="1"
+                              value={formData.currentLowerAligner}
+                              onChange={handleInputChange}
+                              required
+                            />
+                          </div>
+                        </div>
                       </div>
+                    )}
+
+                    <div className="grid gap-4 md:grid-cols-2">
 
                       <div className="space-y-2">
                         <Label htmlFor="startDate">Data de Início</Label>

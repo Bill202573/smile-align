@@ -7,7 +7,7 @@ interface PatientContextType {
   photos: Photo[];
   addPatient: (patient: Omit<Patient, 'id' | 'createdAt'>) => void;
   updatePatient: (id: string, updates: Partial<Patient>) => void;
-  confirmAlignerChange: (patientId: string, photoUrl?: string, notes?: string) => void;
+  confirmAlignerChange: (patientId: string, arch: 'upper' | 'lower', photoUrl?: string, notes?: string) => void;
   addPhoto: (photo: Omit<Photo, 'id' | 'uploadedAt'>) => void;
   getPatientById: (id: string) => Patient | undefined;
   getPatientChanges: (patientId: string) => AlignerChange[];
@@ -25,10 +25,12 @@ const demoPatient: Patient = {
   email: 'maria@email.com',
   phone: '(11) 99999-9999',
   address: 'Rua das Flores, 123 - São Paulo, SP',
-  totalAligners: 24,
+  upperAligners: 24,
+  lowerAligners: 20,
+  currentUpperAligner: 12,
+  currentLowerAligner: 10,
   daysPerAligner: 14,
   arch: 'both',
-  currentAligner: 12,
   startDate: '2024-06-01',
   dentistId: '2',
   dentistName: 'Dr. João Santos',
@@ -37,19 +39,40 @@ const demoPatient: Patient = {
 };
 
 const demoChanges: AlignerChange[] = [
-  { id: '1', patientId: '1', alignerNumber: 11, changedAt: '2024-11-15T10:00:00Z' },
-  { id: '2', patientId: '1', alignerNumber: 12, changedAt: '2024-11-29T14:30:00Z' },
+  { id: '1', patientId: '1', alignerNumber: 11, arch: 'upper', changedAt: '2024-11-15T10:00:00Z' },
+  { id: '2', patientId: '1', alignerNumber: 12, arch: 'upper', changedAt: '2024-11-29T14:30:00Z' },
+  { id: '3', patientId: '1', alignerNumber: 9, arch: 'lower', changedAt: '2024-11-15T10:00:00Z' },
+  { id: '4', patientId: '1', alignerNumber: 10, arch: 'lower', changedAt: '2024-11-29T14:30:00Z' },
 ];
 
 export function PatientProvider({ children }: { children: ReactNode }) {
   const [patients, setPatients] = useState<Patient[]>(() => {
     const saved = localStorage.getItem('ortho-patients');
-    return saved ? JSON.parse(saved) : [demoPatient];
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Migrate old data format
+      return parsed.map((p: any) => ({
+        ...p,
+        upperAligners: p.upperAligners ?? p.totalAligners ?? 24,
+        lowerAligners: p.lowerAligners ?? p.totalAligners ?? 20,
+        currentUpperAligner: p.currentUpperAligner ?? p.currentAligner ?? 1,
+        currentLowerAligner: p.currentLowerAligner ?? p.currentAligner ?? 1,
+      }));
+    }
+    return [demoPatient];
   });
 
   const [alignerChanges, setAlignerChanges] = useState<AlignerChange[]>(() => {
     const saved = localStorage.getItem('ortho-changes');
-    return saved ? JSON.parse(saved) : demoChanges;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Migrate old data format
+      return parsed.map((c: any) => ({
+        ...c,
+        arch: c.arch ?? 'upper',
+      }));
+    }
+    return demoChanges;
   });
 
   const [photos, setPhotos] = useState<Photo[]>(() => {
@@ -84,21 +107,37 @@ export function PatientProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const confirmAlignerChange = (patientId: string, photoUrl?: string, notes?: string) => {
+  const confirmAlignerChange = (
+    patientId: string, 
+    arch: 'upper' | 'lower',
+    photoUrl?: string, 
+    notes?: string
+  ) => {
     const patient = patients.find(p => p.id === patientId);
-    if (!patient || patient.currentAligner >= patient.totalAligners) return;
+    if (!patient) return;
+
+    const currentAligner = arch === 'upper' ? patient.currentUpperAligner : patient.currentLowerAligner;
+    const totalAligners = arch === 'upper' ? patient.upperAligners : patient.lowerAligners;
+
+    if (currentAligner >= totalAligners) return;
 
     const newChange: AlignerChange = {
       id: Date.now().toString(),
       patientId,
-      alignerNumber: patient.currentAligner + 1,
+      alignerNumber: currentAligner + 1,
+      arch,
       changedAt: new Date().toISOString(),
       photoUrl,
       notes,
     };
 
     setAlignerChanges(prev => [...prev, newChange]);
-    updatePatient(patientId, { currentAligner: patient.currentAligner + 1 });
+    
+    if (arch === 'upper') {
+      updatePatient(patientId, { currentUpperAligner: currentAligner + 1 });
+    } else {
+      updatePatient(patientId, { currentLowerAligner: currentAligner + 1 });
+    }
   };
 
   const addPhoto = (photo: Omit<Photo, 'id' | 'uploadedAt'>) => {

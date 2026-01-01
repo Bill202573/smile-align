@@ -16,31 +16,33 @@ import {
   Image,
   Sparkles,
   AlertCircle,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 
-function CircularProgress({ current, total }: { current: number; total: number }) {
-  const percentage = (current / total) * 100;
-  const circumference = 2 * Math.PI * 45;
+function CircularProgress({ current, total, label }: { current: number; total: number; label: string }) {
+  const percentage = total > 0 ? (current / total) * 100 : 0;
+  const circumference = 2 * Math.PI * 40;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
   return (
-    <div className="relative w-32 h-32">
+    <div className="relative w-24 h-24">
       <svg className="w-full h-full transform -rotate-90">
         <circle
-          cx="64"
-          cy="64"
-          r="45"
+          cx="48"
+          cy="48"
+          r="40"
           stroke="currentColor"
-          strokeWidth="10"
+          strokeWidth="8"
           fill="none"
           className="text-secondary"
         />
         <circle
-          cx="64"
-          cy="64"
-          r="45"
+          cx="48"
+          cy="48"
+          r="40"
           stroke="url(#progressGradient)"
-          strokeWidth="10"
+          strokeWidth="8"
           fill="none"
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
@@ -54,8 +56,8 @@ function CircularProgress({ current, total }: { current: number; total: number }
         </defs>
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-bold font-display text-foreground">{current}</span>
-        <span className="text-sm text-muted-foreground">de {total}</span>
+        <span className="text-lg font-bold font-display text-foreground">{current}/{total}</span>
+        <span className="text-xs text-muted-foreground">{label}</span>
       </div>
     </div>
   );
@@ -85,6 +87,7 @@ export default function PatientDashboard() {
   const { user, logout } = useAuth();
   const { patients, confirmAlignerChange, getPatientChanges } = usePatients();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [selectedArch, setSelectedArch] = useState<'upper' | 'lower'>('upper');
   const [isConfirming, setIsConfirming] = useState(false);
   
   // Get patient data (using demo patient for now)
@@ -93,21 +96,34 @@ export default function PatientDashboard() {
   
   if (!patient) return null;
 
-  const progress = Math.round((patient.currentAligner / patient.totalAligners) * 100);
+  const upperProgress = patient.upperAligners > 0 
+    ? Math.round((patient.currentUpperAligner / patient.upperAligners) * 100) 
+    : 0;
+  const lowerProgress = patient.lowerAligners > 0 
+    ? Math.round((patient.currentLowerAligner / patient.lowerAligners) * 100) 
+    : 0;
   
-  // Calculate days until next change
+  // Calculate days until next change (based on most recent change)
   const lastChange = changes[0];
   const lastChangeDate = lastChange ? new Date(lastChange.changedAt) : new Date(patient.startDate);
   const nextChangeDate = new Date(lastChangeDate);
   nextChangeDate.setDate(nextChangeDate.getDate() + patient.daysPerAligner);
   const daysLeft = Math.max(0, Math.ceil((nextChangeDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
+  const canChangeUpper = patient.arch !== 'lower' && patient.currentUpperAligner < patient.upperAligners;
+  const canChangeLower = patient.arch !== 'upper' && patient.currentLowerAligner < patient.lowerAligners;
+
   const handleConfirmChange = async () => {
     setIsConfirming(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
-    confirmAlignerChange(patient.id);
+    confirmAlignerChange(patient.id, selectedArch);
     setIsConfirming(false);
     setShowConfirmModal(false);
+  };
+
+  const openConfirmModal = (arch: 'upper' | 'lower') => {
+    setSelectedArch(arch);
+    setShowConfirmModal(true);
   };
 
   return (
@@ -136,69 +152,97 @@ export default function PatientDashboard() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
-        {/* Progress Card */}
+        {/* Progress Card - Both Arches */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="glass-card-elevated p-6 rounded-3xl"
         >
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-display font-bold text-foreground">Seu Progresso</h2>
-              <p className="text-muted-foreground">Tratamento com {patient.totalAligners} alinhadores</p>
-            </div>
-            <CircularProgress current={patient.currentAligner} total={patient.totalAligners} />
+          <div className="mb-4">
+            <h2 className="text-xl font-display font-bold text-foreground">Seu Progresso</h2>
+            <p className="text-muted-foreground">Tratamento com alinhadores</p>
           </div>
           
-          {/* Progress bar */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Alinhador {patient.currentAligner}</span>
-              <span className="font-semibold text-primary">{progress}%</span>
-            </div>
-            <div className="h-3 bg-secondary rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 1, ease: "easeOut" }}
-                className="h-full gradient-hero rounded-full"
-              />
-            </div>
+          <div className="flex justify-center gap-8 mb-6">
+            {/* Upper Arch Progress */}
+            {patient.arch !== 'lower' && (
+              <div className="text-center">
+                <CircularProgress 
+                  current={patient.currentUpperAligner} 
+                  total={patient.upperAligners} 
+                  label="Superior"
+                />
+                <div className="flex items-center justify-center gap-1 mt-2">
+                  <ArrowUp className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium text-primary">{upperProgress}%</span>
+                </div>
+              </div>
+            )}
+            
+            {/* Lower Arch Progress */}
+            {patient.arch !== 'upper' && (
+              <div className="text-center">
+                <CircularProgress 
+                  current={patient.currentLowerAligner} 
+                  total={patient.lowerAligners} 
+                  label="Inferior"
+                />
+                <div className="flex items-center justify-center gap-1 mt-2">
+                  <ArrowDown className="w-4 h-4 text-accent" />
+                  <span className="text-sm font-medium text-accent">{lowerProgress}%</span>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <TrendingUp className="w-4 h-4 text-success" />
             <span>Você está indo muito bem! Continue assim.</span>
           </div>
         </motion.div>
 
-        {/* Countdown and CTA */}
-        <div className="grid gap-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <CountdownTimer daysLeft={daysLeft} />
-          </motion.div>
+        {/* Countdown */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <CountdownTimer daysLeft={daysLeft} />
+        </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
+        {/* Change Buttons - Separated by Arch */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="space-y-3"
+        >
+          {patient.arch !== 'lower' && (
             <Button
               variant="accent"
-              size="xl"
+              size="lg"
               className="w-full"
-              onClick={() => setShowConfirmModal(true)}
-              disabled={patient.currentAligner >= patient.totalAligners}
+              onClick={() => openConfirmModal('upper')}
+              disabled={!canChangeUpper}
             >
-              <Check className="w-6 h-6" />
-              Confirmar Troca de Alinhador
+              <ArrowUp className="w-5 h-5" />
+              Trocar Alinhador Superior ({patient.currentUpperAligner} → {patient.currentUpperAligner + 1})
             </Button>
-          </motion.div>
-        </div>
+          )}
+          
+          {patient.arch !== 'upper' && (
+            <Button
+              variant="gradient"
+              size="lg"
+              className="w-full"
+              onClick={() => openConfirmModal('lower')}
+              disabled={!canChangeLower}
+            >
+              <ArrowDown className="w-5 h-5" />
+              Trocar Alinhador Inferior ({patient.currentLowerAligner} → {patient.currentLowerAligner + 1})
+            </Button>
+          )}
+        </motion.div>
 
         {/* Quick Actions */}
         <motion.div
@@ -237,15 +281,21 @@ export default function PatientDashboard() {
           </div>
 
           <div className="space-y-4">
-            {changes.slice(0, 3).map((change, index) => (
+            {changes.slice(0, 4).map((change, index) => (
               <div key={change.id} className="flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                   index === 0 ? 'bg-success/20' : 'bg-secondary'
                 }`}>
-                  <Check className={`w-5 h-5 ${index === 0 ? 'text-success' : 'text-muted-foreground'}`} />
+                  {change.arch === 'upper' ? (
+                    <ArrowUp className={`w-5 h-5 ${index === 0 ? 'text-success' : 'text-muted-foreground'}`} />
+                  ) : (
+                    <ArrowDown className={`w-5 h-5 ${index === 0 ? 'text-success' : 'text-muted-foreground'}`} />
+                  )}
                 </div>
                 <div className="flex-1">
-                  <p className="font-medium text-foreground">Alinhador {change.alignerNumber}</p>
+                  <p className="font-medium text-foreground">
+                    {change.arch === 'upper' ? 'Superior' : 'Inferior'} #{change.alignerNumber}
+                  </p>
                   <p className="text-sm text-muted-foreground">
                     {new Date(change.changedAt).toLocaleDateString('pt-BR', {
                       day: 'numeric',
@@ -326,11 +376,21 @@ export default function PatientDashboard() {
             >
               <div className="text-center">
                 <div className="w-20 h-20 rounded-3xl gradient-accent flex items-center justify-center mx-auto mb-6">
-                  <Check className="w-10 h-10 text-white" />
+                  {selectedArch === 'upper' ? (
+                    <ArrowUp className="w-10 h-10 text-white" />
+                  ) : (
+                    <ArrowDown className="w-10 h-10 text-white" />
+                  )}
                 </div>
                 <h2 className="text-2xl font-display font-bold mb-2">Confirmar Troca</h2>
                 <p className="text-muted-foreground mb-6">
-                  Você está trocando para o <strong>Alinhador {patient.currentAligner + 1}</strong>
+                  Você está trocando o alinhador{' '}
+                  <strong>
+                    {selectedArch === 'upper' ? 'Superior' : 'Inferior'} para o #
+                    {selectedArch === 'upper' 
+                      ? patient.currentUpperAligner + 1 
+                      : patient.currentLowerAligner + 1}
+                  </strong>
                 </p>
 
                 <div className="flex items-center gap-3 p-4 bg-warning/10 rounded-xl mb-6 text-left">

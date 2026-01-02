@@ -14,16 +14,312 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      aligner_changes: {
+        Row: {
+          aligner_number: number
+          arch: Database["public"]["Enums"]["arch_type"]
+          changed_at: string
+          id: string
+          notes: string | null
+          patient_id: string
+          photo_url: string | null
+        }
+        Insert: {
+          aligner_number: number
+          arch: Database["public"]["Enums"]["arch_type"]
+          changed_at?: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          photo_url?: string | null
+        }
+        Update: {
+          aligner_number?: number
+          arch?: Database["public"]["Enums"]["arch_type"]
+          changed_at?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          photo_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aligner_changes_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients: {
+        Row: {
+          address: string | null
+          arch: Database["public"]["Enums"]["arch_type"]
+          birth_date: string
+          cpf: string
+          created_at: string
+          current_lower_aligner: number
+          current_upper_aligner: number
+          days_per_aligner: number
+          dentist_id: string | null
+          dentist_name: string | null
+          email: string
+          full_name: string
+          id: string
+          lower_aligners: number
+          notes: string | null
+          phone: string
+          start_date: string
+          updated_at: string
+          upper_aligners: number
+        }
+        Insert: {
+          address?: string | null
+          arch?: Database["public"]["Enums"]["arch_type"]
+          birth_date: string
+          cpf: string
+          created_at?: string
+          current_lower_aligner?: number
+          current_upper_aligner?: number
+          days_per_aligner?: number
+          dentist_id?: string | null
+          dentist_name?: string | null
+          email: string
+          full_name: string
+          id?: string
+          lower_aligners?: number
+          notes?: string | null
+          phone: string
+          start_date?: string
+          updated_at?: string
+          upper_aligners?: number
+        }
+        Update: {
+          address?: string | null
+          arch?: Database["public"]["Enums"]["arch_type"]
+          birth_date?: string
+          cpf?: string
+          created_at?: string
+          current_lower_aligner?: number
+          current_upper_aligner?: number
+          days_per_aligner?: number
+          dentist_id?: string | null
+          dentist_name?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          lower_aligners?: number
+          notes?: string | null
+          phone?: string
+          start_date?: string
+          updated_at?: string
+          upper_aligners?: number
+        }
+        Relationships: []
+      }
+      photos: {
+        Row: {
+          aligner_number: number
+          arch: Database["public"]["Enums"]["arch_type"] | null
+          id: string
+          notes: string | null
+          patient_id: string
+          type: Database["public"]["Enums"]["photo_type"]
+          uploaded_at: string
+          url: string
+        }
+        Insert: {
+          aligner_number?: number
+          arch?: Database["public"]["Enums"]["arch_type"] | null
+          id?: string
+          notes?: string | null
+          patient_id: string
+          type: Database["public"]["Enums"]["photo_type"]
+          uploaded_at?: string
+          url: string
+        }
+        Update: {
+          aligner_number?: number
+          arch?: Database["public"]["Enums"]["arch_type"] | null
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          type?: Database["public"]["Enums"]["photo_type"]
+          uploaded_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photos_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_items: {
+        Row: {
+          entry_date: string
+          id: string
+          lower_aligner_count: number
+          patient_id: string
+          patient_name: string
+          responsible: string | null
+          status: Database["public"]["Enums"]["production_status"]
+          updated_at: string
+          upper_aligner_count: number
+        }
+        Insert: {
+          entry_date?: string
+          id?: string
+          lower_aligner_count?: number
+          patient_id: string
+          patient_name: string
+          responsible?: string | null
+          status?: Database["public"]["Enums"]["production_status"]
+          updated_at?: string
+          upper_aligner_count?: number
+        }
+        Update: {
+          entry_date?: string
+          id?: string
+          lower_aligner_count?: number
+          patient_id?: string
+          patient_name?: string
+          responsible?: string | null
+          status?: Database["public"]["Enums"]["production_status"]
+          updated_at?: string
+          upper_aligner_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_items_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      refining_items: {
+        Row: {
+          completed_at: string | null
+          id: string
+          lower_aligner_count: number
+          patient_id: string
+          patient_name: string
+          received_at: string
+          returned_at: string | null
+          status: Database["public"]["Enums"]["refining_status"]
+          upper_aligner_count: number
+          value: number
+        }
+        Insert: {
+          completed_at?: string | null
+          id?: string
+          lower_aligner_count?: number
+          patient_id: string
+          patient_name: string
+          received_at?: string
+          returned_at?: string | null
+          status?: Database["public"]["Enums"]["refining_status"]
+          upper_aligner_count?: number
+          value?: number
+        }
+        Update: {
+          completed_at?: string | null
+          id?: string
+          lower_aligner_count?: number
+          patient_id?: string
+          patient_name?: string
+          received_at?: string
+          returned_at?: string | null
+          status?: Database["public"]["Enums"]["refining_status"]
+          upper_aligner_count?: number
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refining_items_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_patient_user_id: { Args: { _patient_id: string }; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "patient" | "dentist" | "admin" | "refiner"
+      arch_type: "upper" | "lower" | "both"
+      photo_type: "before" | "during" | "progress"
+      production_status:
+        | "files_received"
+        | "preparing_3d"
+        | "printing"
+        | "printed"
+        | "ready_for_refining"
+      refining_status: "received" | "refining" | "completed" | "returned"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +446,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["patient", "dentist", "admin", "refiner"],
+      arch_type: ["upper", "lower", "both"],
+      photo_type: ["before", "during", "progress"],
+      production_status: [
+        "files_received",
+        "preparing_3d",
+        "printing",
+        "printed",
+        "ready_for_refining",
+      ],
+      refining_status: ["received", "refining", "completed", "returned"],
+    },
   },
 } as const

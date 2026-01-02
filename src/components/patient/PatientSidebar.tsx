@@ -8,12 +8,13 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  Bell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import logo from '@/assets/logo.jpg';
 
-type TabType = 'profile' | 'treatment' | 'history' | 'gallery';
+type TabType = 'profile' | 'treatment' | 'history' | 'gallery' | 'notifications';
 
 interface PatientSidebarProps {
   activeTab: TabType;
@@ -35,6 +36,7 @@ export function PatientSidebar({
   const menuItems: { id: TabType; label: string; icon: React.ElementType }[] = [
     { id: 'profile', label: 'Meu Perfil', icon: User },
     { id: 'treatment', label: 'Tratamento', icon: Activity },
+    { id: 'notifications', label: 'Notificações', icon: Bell },
     { id: 'history', label: 'Histórico', icon: History },
     { id: 'gallery', label: 'Galeria de Fotos', icon: Camera },
   ];

@@ -11,6 +11,7 @@ import { PhotoGallery } from '@/components/patient/PhotoGallery';
 import { ProfileTab } from '@/components/patient/ProfileTab';
 import { PauseReasonModal } from '@/components/patient/PauseReasonModal';
 import { NotificationBanner } from '@/components/patient/NotificationBanner';
+import { NotificationsTab } from '@/components/patient/NotificationsTab';
 import logo from '@/assets/logo.jpg';
 import {
   Check,
@@ -29,7 +30,7 @@ type ArchStatus = 'em_uso' | 'pausado' | 'finalizado';
 export default function PatientDashboard() {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'treatment' | 'history' | 'gallery'>('treatment');
+  const [activeTab, setActiveTab] = useState<'profile' | 'treatment' | 'history' | 'gallery' | 'notifications'>('treatment');
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showPauseModal, setShowPauseModal] = useState(false);
@@ -268,7 +269,12 @@ export default function PatientDashboard() {
               <img src={logo} alt="Stelle" className="h-8" />
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon-sm" className="relative">
+              <Button 
+                variant="ghost" 
+                size="icon-sm" 
+                className="relative"
+                onClick={() => setActiveTab('notifications')}
+              >
                 <Bell className="w-5 h-5" />
                 {unreadNotifications > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full text-[10px] text-white flex items-center justify-center">
@@ -388,6 +394,13 @@ export default function PatientDashboard() {
                 ))
               )}
             </div>
+          )}
+
+          {activeTab === 'notifications' && (
+            <NotificationsTab 
+              patientId={patient.id} 
+              onNotificationsChange={fetchUnreadNotifications}
+            />
           )}
 
           {activeTab === 'gallery' && (

@@ -7,6 +7,7 @@ import { DeliveryModal } from '@/components/dentist/DeliveryModal';
 import { DeliveryHistoryModal } from '@/components/dentist/DeliveryHistoryModal';
 import { TreatmentHistoryModal } from '@/components/dentist/TreatmentHistoryModal';
 import { ReleasePauseModal } from '@/components/dentist/ReleasePauseModal';
+import { CommunicationsTab } from '@/components/dentist/CommunicationsTab';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,6 +29,7 @@ import {
   Play,
   ArrowUp,
   ArrowDown,
+  MessageSquare,
 } from 'lucide-react';
 import logo from '@/assets/logo.jpg';
 import { format, addDays } from 'date-fns';
@@ -77,10 +79,12 @@ interface PausedArchInfo {
 type StatusFilter = 'all' | 'on-track' | 'delayed';
 type TreatmentFilter = 'all' | 'in_treatment' | 'completed' | 'refino';
 type DentistFilter = 'all' | string;
+type MainTab = 'patients' | 'communications';
 
 export default function DentistDashboard() {
   const { user, logout } = useAuth();
   
+  const [mainTab, setMainTab] = useState<MainTab>('patients');
   const [patients, setPatients] = useState<PatientRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
@@ -297,7 +301,37 @@ export default function DentistDashboard() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Stats */}
+        {/* Tabs */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setMainTab('patients')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${
+              mainTab === 'patients'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            Pacientes
+          </button>
+          <button
+            onClick={() => setMainTab('communications')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${
+              mainTab === 'communications'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            Comunicados
+          </button>
+        </div>
+
+        {mainTab === 'communications' && <CommunicationsTab />}
+
+        {mainTab === 'patients' && (
+          <>
+            {/* Stats */}
         <div className="grid grid-cols-3 gap-4">
           {[
             { label: 'Pacientes', value: patients.length, icon: Users, color: 'bg-primary/10 text-primary' },
@@ -567,6 +601,8 @@ export default function DentistDashboard() {
             </div>
           )}
         </div>
+          </>
+        )}
       </main>
 
       {/* Modals */}

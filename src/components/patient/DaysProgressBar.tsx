@@ -39,20 +39,19 @@ export function DaysProgressBar({ daysElapsed, totalDays, nextChangeDate }: Days
 
   return (
     <div className="glass-card p-5 rounded-2xl">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <p className="text-sm text-muted-foreground">Próxima troca</p>
-          <p className="font-display font-semibold text-lg text-foreground">{formattedDate}</p>
-        </div>
-        <div className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-          daysLeft <= 2 
-            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
-            : daysLeft <= 5 
-              ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-        }`}>
-          {daysLeft <= 0 ? 'Hora de trocar!' : `${daysLeft} dias restantes`}
-        </div>
+      <div className="mb-4">
+        <p className="text-sm text-muted-foreground">Próxima troca</p>
+        <p className="font-display font-semibold text-lg text-foreground">{formattedDate}</p>
+      </div>
+      
+      <div className={`inline-block px-3 py-1.5 rounded-full text-sm font-medium mb-4 ${
+        daysLeft <= 2 
+          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
+          : daysLeft <= 5 
+            ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+      }`}>
+        {daysLeft <= 0 ? 'Hora de trocar!' : `${daysLeft} dias restantes`}
       </div>
       
       <div className="relative">

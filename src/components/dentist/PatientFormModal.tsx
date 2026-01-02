@@ -83,38 +83,16 @@ export function PatientFormModal({
         if (error) throw error;
         toast.success('Paciente atualizado com sucesso!');
       } else {
-        // Create user account first
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              full_name: formData.full_name,
-            }
-          }
-        });
+        // Get current user for dentist_id
+        const { data: { user } } = await supabase.auth.getUser();
+        const actualDentistId = user?.id || null;
 
-        if (authError) throw authError;
-
-        // Add patient role
-        if (authData.user) {
-          const { error: roleError } = await supabase
-            .from('user_roles')
-            .insert({
-              user_id: authData.user.id,
-              role: 'patient' as const,
-            });
-
-          if (roleError) console.error('Role error:', roleError);
-        }
-
-        // Create patient record
+        // Create patient record first (without auth user for testing)
         const { error: patientError } = await supabase
           .from('patients')
           .insert({
             ...formData,
-            dentist_id: dentistId,
+            dentist_id: actualDentistId,
             dentist_name: dentistName,
             provisional_password: password,
           });
@@ -175,52 +153,47 @@ export function PatientFormModal({
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Nome Completo *</Label>
+                  <Label>Nome Completo</Label>
                   <Input
                     value={formData.full_name}
                     onChange={(e) => handleChange('full_name', e.target.value)}
-                    required
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>CPF *</Label>
+                  <Label>CPF</Label>
                   <Input
                     value={formData.cpf}
                     onChange={(e) => handleChange('cpf', e.target.value)}
                     placeholder="000.000.000-00"
-                    required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Data de Nascimento *</Label>
+                  <Label>Data de Nascimento</Label>
                   <Input
                     type="date"
                     value={formData.birth_date}
                     onChange={(e) => handleChange('birth_date', e.target.value)}
-                    required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Email *</Label>
+                  <Label>Email</Label>
                   <Input
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleChange('email', e.target.value)}
-                    required
                     disabled={isEditing}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Telefone *</Label>
+                  <Label>Telefone</Label>
                   <Input
                     value={formData.phone}
                     onChange={(e) => handleChange('phone', e.target.value)}
                     placeholder="(11) 99999-9999"
-                    required
                   />
                 </div>
 

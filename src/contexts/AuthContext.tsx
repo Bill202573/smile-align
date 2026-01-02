@@ -29,13 +29,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserRole = async (userId: string, userEmail: string, userName: string) => {
     try {
+      // Use .limit(1) instead of .single() to avoid errors when user has multiple roles
       const { data: roleData, error } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', userId)
-        .single();
+        .limit(1);
 
-      if (error || !roleData) {
+      if (error || !roleData || roleData.length === 0) {
         console.log('No role found for user');
         return null;
       }
@@ -44,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: userId,
         email: userEmail,
         name: userName,
-        role: roleData.role as UserRole,
+        role: roleData[0].role as UserRole,
       };
     } catch (err) {
       console.error('Error fetching user role:', err);

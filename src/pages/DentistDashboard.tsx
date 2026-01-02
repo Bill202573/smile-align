@@ -43,6 +43,7 @@ interface PatientRow {
   dentist_name: string | null;
   notes: string | null;
   provisional_password: string | null;
+  process_number: string | null;
 }
 
 export default function DentistDashboard() {
@@ -222,51 +223,64 @@ export default function DentistDashboard() {
                     className="glass-card p-5 rounded-2xl hover:shadow-lg transition-all cursor-pointer group"
                     onClick={() => handlePatientClick(patient)}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <User className="w-7 h-7 text-primary" />
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start gap-3 mb-1">
-                          <h3 className="font-semibold text-foreground truncate flex-1 hover:text-primary transition-colors">
+                    <div className="flex flex-col gap-3">
+                      {/* Top row: Avatar + Info */}
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <User className="w-6 h-6 text-primary" />
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-foreground hover:text-primary transition-colors">
                             {patient.full_name}
                           </h3>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 flex items-center gap-1 ${config.color}`}>
-                            <StatusIcon className="w-3 h-3" />
-                            {config.label}
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          Sup: {patient.current_upper_aligner}/{patient.upper_aligners} • Inf: {patient.current_lower_aligner}/{patient.lower_aligners}
-                        </p>
-                        
-                        {/* Progress bar */}
-                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                          <div
-                            className="h-full gradient-hero rounded-full transition-all duration-500"
-                            style={{ width: `${progress}%` }}
-                          />
+                          {patient.process_number && (
+                            <p className="text-xs text-muted-foreground">Processo: {patient.process_number}</p>
+                          )}
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Sup: {patient.current_upper_aligner}/{patient.upper_aligners} • Inf: {patient.current_lower_aligner}/{patient.lower_aligners}
+                          </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <Button 
-                          variant="ghost" 
-                          size="icon-sm"
-                          onClick={(e) => handleDelivery(patient, e)}
-                          title="Registrar entrega"
-                        >
-                          <Package className="w-5 h-5" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon-sm"
-                          onClick={(e) => handleHistory(patient, e)}
-                          title="Histórico de entregas"
-                        >
-                          <History className="w-5 h-5" />
-                        </Button>
+                      {/* Bottom row: Progress + Status + Actions */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                            <div
+                              className="h-full gradient-hero rounded-full transition-all duration-500"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+                        
+                        <span className="text-xs font-medium text-primary whitespace-nowrap">
+                          {progress}%
+                        </span>
+
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1 ${config.color}`}>
+                          <StatusIcon className="w-3 h-3" />
+                          {config.label}
+                        </span>
+
+                        <div className="flex items-center gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon-sm"
+                            onClick={(e) => handleDelivery(patient, e)}
+                            title="Registrar entrega"
+                          >
+                            <Package className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon-sm"
+                            onClick={(e) => handleHistory(patient, e)}
+                            title="Histórico de entregas"
+                          >
+                            <History className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </motion.div>

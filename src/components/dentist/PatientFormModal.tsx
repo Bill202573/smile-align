@@ -28,7 +28,7 @@ export function PatientFormModal({
 }: PatientFormModalProps) {
   const isEditing = !!editPatient;
   
-  const [formData, setFormData] = useState({
+  const getInitialFormData = () => ({
     full_name: editPatient?.full_name || '',
     cpf: editPatient?.cpf || '',
     process_number: editPatient?.process_number || '',
@@ -43,7 +43,14 @@ export function PatientFormModal({
     notes: editPatient?.notes || '',
   });
 
+  const [formData, setFormData] = useState(getInitialFormData());
   const [provisionalPassword, setProvisionalPassword] = useState(editPatient?.provisional_password || '');
+
+  // Reset form when editPatient changes
+  React.useEffect(() => {
+    setFormData(getInitialFormData());
+    setProvisionalPassword(editPatient?.provisional_password || '');
+  }, [editPatient]);
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 

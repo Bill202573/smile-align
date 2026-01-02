@@ -44,7 +44,9 @@ export function DeliveryModal({
     setIsLoading(true);
 
     try {
-      // Record the delivery
+      // Record the delivery - only include delivered_by if it's a valid UUID
+      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dentistId);
+      
       const { error: deliveryError } = await supabase
         .from('aligner_deliveries')
         .insert({
@@ -53,7 +55,7 @@ export function DeliveryModal({
           upper_to: formData.upper_to,
           lower_from: formData.lower_from,
           lower_to: formData.lower_to,
-          delivered_by: dentistId,
+          delivered_by: isValidUUID ? dentistId : null,
           notes: formData.notes || null,
         });
 

@@ -111,6 +111,8 @@ export type Database = {
           cpf: string
           created_at: string
           current_lower_aligner: number
+          current_refining_lower: number | null
+          current_refining_upper: number | null
           current_upper_aligner: number
           days_per_aligner: number
           dentist_id: string | null
@@ -127,6 +129,17 @@ export type Database = {
           phone: string
           process_number: string | null
           provisional_password: string | null
+          refining_active: boolean | null
+          refining_lower_aligners: number | null
+          refining_lower_last_change: string | null
+          refining_lower_status:
+            | Database["public"]["Enums"]["arch_status"]
+            | null
+          refining_upper_aligners: number | null
+          refining_upper_last_change: string | null
+          refining_upper_status:
+            | Database["public"]["Enums"]["arch_status"]
+            | null
           start_date: string
           treatment_status: Database["public"]["Enums"]["treatment_status"]
           updated_at: string
@@ -142,6 +155,8 @@ export type Database = {
           cpf: string
           created_at?: string
           current_lower_aligner?: number
+          current_refining_lower?: number | null
+          current_refining_upper?: number | null
           current_upper_aligner?: number
           days_per_aligner?: number
           dentist_id?: string | null
@@ -158,6 +173,17 @@ export type Database = {
           phone: string
           process_number?: string | null
           provisional_password?: string | null
+          refining_active?: boolean | null
+          refining_lower_aligners?: number | null
+          refining_lower_last_change?: string | null
+          refining_lower_status?:
+            | Database["public"]["Enums"]["arch_status"]
+            | null
+          refining_upper_aligners?: number | null
+          refining_upper_last_change?: string | null
+          refining_upper_status?:
+            | Database["public"]["Enums"]["arch_status"]
+            | null
           start_date?: string
           treatment_status?: Database["public"]["Enums"]["treatment_status"]
           updated_at?: string
@@ -173,6 +199,8 @@ export type Database = {
           cpf?: string
           created_at?: string
           current_lower_aligner?: number
+          current_refining_lower?: number | null
+          current_refining_upper?: number | null
           current_upper_aligner?: number
           days_per_aligner?: number
           dentist_id?: string | null
@@ -189,6 +217,17 @@ export type Database = {
           phone?: string
           process_number?: string | null
           provisional_password?: string | null
+          refining_active?: boolean | null
+          refining_lower_aligners?: number | null
+          refining_lower_last_change?: string | null
+          refining_lower_status?:
+            | Database["public"]["Enums"]["arch_status"]
+            | null
+          refining_upper_aligners?: number | null
+          refining_upper_last_change?: string | null
+          refining_upper_status?:
+            | Database["public"]["Enums"]["arch_status"]
+            | null
           start_date?: string
           treatment_status?: Database["public"]["Enums"]["treatment_status"]
           updated_at?: string
@@ -357,6 +396,56 @@ export type Database = {
           },
         ]
       }
+      treatment_history: {
+        Row: {
+          aligner_from: number | null
+          aligner_to: number | null
+          arch: Database["public"]["Enums"]["arch_type"]
+          created_by: string | null
+          dentist_note: string | null
+          event_date: string
+          event_type: string
+          id: string
+          is_refining: boolean | null
+          patient_id: string
+          patient_reason: string | null
+        }
+        Insert: {
+          aligner_from?: number | null
+          aligner_to?: number | null
+          arch: Database["public"]["Enums"]["arch_type"]
+          created_by?: string | null
+          dentist_note?: string | null
+          event_date?: string
+          event_type: string
+          id?: string
+          is_refining?: boolean | null
+          patient_id: string
+          patient_reason?: string | null
+        }
+        Update: {
+          aligner_from?: number | null
+          aligner_to?: number | null
+          arch?: Database["public"]["Enums"]["arch_type"]
+          created_by?: string | null
+          dentist_note?: string | null
+          event_date?: string
+          event_type?: string
+          id?: string
+          is_refining?: boolean | null
+          patient_id?: string
+          patient_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_history_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -402,7 +491,7 @@ export type Database = {
         | "printed"
         | "ready_for_refining"
       refining_status: "received" | "refining" | "completed" | "returned"
-      treatment_status: "in_treatment" | "completed"
+      treatment_status: "in_treatment" | "completed" | "refino"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -543,7 +632,7 @@ export const Constants = {
         "ready_for_refining",
       ],
       refining_status: ["received", "refining", "completed", "returned"],
-      treatment_status: ["in_treatment", "completed"],
+      treatment_status: ["in_treatment", "completed", "refino"],
     },
   },
 } as const

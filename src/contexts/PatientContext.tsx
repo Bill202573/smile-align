@@ -36,6 +36,12 @@ const demoPatient: Patient = {
   dentistName: 'Dr. João Santos',
   notes: 'Paciente muito colaborativa',
   createdAt: '2024-05-20',
+  treatmentStatus: 'in_treatment',
+  refiningActive: false,
+  refiningUpperAligners: 0,
+  refiningLowerAligners: 0,
+  currentRefiningUpper: 0,
+  currentRefiningLower: 0,
 };
 
 const demoChanges: AlignerChange[] = [

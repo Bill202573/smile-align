@@ -27,6 +27,26 @@ export interface Patient {
   dentistName: string;
   notes: string;
   createdAt: string;
+  treatmentStatus: 'in_treatment' | 'completed' | 'refino';
+  // Refining fields
+  refiningActive: boolean;
+  refiningUpperAligners: number;
+  refiningLowerAligners: number;
+  currentRefiningUpper: number;
+  currentRefiningLower: number;
+}
+
+export interface TreatmentHistoryEvent {
+  id: string;
+  patientId: string;
+  eventDate: string;
+  arch: 'upper' | 'lower' | 'both';
+  eventType: 'aligner_change' | 'pause_started' | 'pause_released' | 'arch_completed' | 'refining_started' | 'refining_completed';
+  alignerFrom: number | null;
+  alignerTo: number | null;
+  isRefining: boolean;
+  patientReason: string | null;
+  dentistNote: string | null;
 }
 
 export interface AlignerChange {

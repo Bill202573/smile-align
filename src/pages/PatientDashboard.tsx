@@ -4,7 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { PatientSidebar } from '@/components/patient/PatientSidebar';
-import { DaysProgressBar } from '@/components/patient/DaysProgressBar';
+import { ArchProgressCard } from '@/components/patient/ArchProgressCard';
+import { OverallProgress } from '@/components/patient/OverallProgress';
 import { PhotoUploadModal } from '@/components/patient/PhotoUploadModal';
 import { PhotoGallery } from '@/components/patient/PhotoGallery';
 import { ProfileTab } from '@/components/patient/ProfileTab';
@@ -12,41 +13,16 @@ import logo from '@/assets/logo.jpg';
 import {
   Check,
   Camera,
-  Clock,
   LogOut,
   Bell,
-  TrendingUp,
   AlertCircle,
   ArrowUp,
   ArrowDown,
   Menu,
+  Pause,
 } from 'lucide-react';
 
-function CircularProgress({ current, total, label }: { current: number; total: number; label: string }) {
-  const percentage = total > 0 ? (current / total) * 100 : 0;
-  const circumference = 2 * Math.PI * 40;
-  const strokeDashoffset = circumference - (percentage / 100) * circumference;
-
-  return (
-    <div className="relative w-24 h-24">
-      <svg className="w-full h-full transform -rotate-90">
-        <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="none" className="text-secondary" />
-        <circle cx="48" cy="48" r="40" stroke="url(#progressGradient)" strokeWidth="8" fill="none"
-          strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} className="progress-ring" />
-        <defs>
-          <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsl(var(--primary))" />
-            <stop offset="100%" stopColor="hsl(var(--accent))" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-lg font-bold font-display text-foreground">{current}/{total}</span>
-        <span className="text-xs text-muted-foreground">{label}</span>
-      </div>
-    </div>
-  );
-}
+type ArchStatus = 'em_uso' | 'pausado' | 'finalizado';
 
 export default function PatientDashboard() {
   const { user, logout } = useAuth();
@@ -54,6 +30,7 @@ export default function PatientDashboard() {
   const [activeTab, setActiveTab] = useState<'profile' | 'treatment' | 'history' | 'gallery'>('treatment');
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showPauseModal, setShowPauseModal] = useState(false);
   const [selectedArch, setSelectedArch] = useState<'upper' | 'lower'>('upper');
   const [isConfirming, setIsConfirming] = useState(false);
   const [patient, setPatient] = useState<any>(null);
@@ -89,6 +66,105 @@ export default function PatientDashboard() {
     }
   };
 
+  const getArchLastChangeDate = (arch: 'upper' | 'lower') => {
+    // First check if there's a last_change_date in the patient record
+    const lastChangeDateField = arch === 'upper' ? patient?.upper_last_change_date : patient?.lower_last_change_date;
+    if (lastChangeDateField) {
+      return new Date(lastChangeDateField);
+    }
+    
+    // Fallback to looking at changes history
+    const archChanges = changes.filter(c => c.arch === arch);
+    if (archChanges.length > 0) {
+      return new Date(archChanges[0].changed_at);
+    }
+    return new Date(patient?.start_date || Date.now());
+  };
+
+  const calculateDaysElapsed = (arch: 'upper' | 'lower') => {
+    const lastChange = getArchLastChangeDate(arch);
+    return Math.floor((Date.now() - lastChange.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  const calculateNextChangeDate = (arch: 'upper' | 'lower') => {
+    const lastChange = getArchLastChangeDate(arch);
+    const nextChange = new Date(lastChange);
+    nextChange.setDate(nextChange.getDate() + (patient?.days_per_aligner || 14));
+    return nextChange;
+  };
+
+  const getArchStatus = (arch: 'upper' | 'lower'): ArchStatus => {
+    const statusField = arch === 'upper' ? patient?.upper_arch_status : patient?.lower_arch_status;
+    const currentAligner = arch === 'upper' ? patient?.current_upper_aligner : patient?.current_lower_aligner;
+    const totalAligners = arch === 'upper' ? patient?.upper_aligners : patient?.lower_aligners;
+    
+    // Auto-finalize if at last aligner
+    if (currentAligner >= totalAligners) {
+      return 'finalizado';
+    }
+    
+    return statusField || 'em_uso';
+  };
+
+  const handleConfirmChange = async () => {
+    setIsConfirming(true);
+    try {
+      const currentAligner = selectedArch === 'upper' ? patient.current_upper_aligner : patient.current_lower_aligner;
+      const totalAligners = selectedArch === 'upper' ? patient.upper_aligners : patient.lower_aligners;
+      const newAlignerNumber = currentAligner + 1;
+      
+      // Insert change record
+      await supabase.from('aligner_changes').insert({
+        patient_id: patient.id,
+        aligner_number: newAlignerNumber,
+        arch: selectedArch,
+      });
+      
+      // Update patient - only the specific arch
+      const updateField = selectedArch === 'upper' ? 'current_upper_aligner' : 'current_lower_aligner';
+      const lastChangeDateField = selectedArch === 'upper' ? 'upper_last_change_date' : 'lower_last_change_date';
+      const statusField = selectedArch === 'upper' ? 'upper_arch_status' : 'lower_arch_status';
+      
+      const updateData: Record<string, any> = {
+        [updateField]: newAlignerNumber,
+        [lastChangeDateField]: new Date().toISOString().split('T')[0],
+      };
+      
+      // Check if this was the last aligner
+      if (newAlignerNumber >= totalAligners) {
+        updateData[statusField] = 'finalizado';
+      }
+      
+      await supabase.from('patients').update(updateData).eq('id', patient.id);
+      fetchPatientData();
+    } catch (error) {
+      console.error('Error confirming change:', error);
+    } finally {
+      setIsConfirming(false);
+      setShowConfirmModal(false);
+    }
+  };
+
+  const handlePauseToggle = async () => {
+    setIsConfirming(true);
+    try {
+      const statusField = selectedArch === 'upper' ? 'upper_arch_status' : 'lower_arch_status';
+      const currentStatus = getArchStatus(selectedArch);
+      const newStatus = currentStatus === 'pausado' ? 'em_uso' : 'pausado';
+      
+      await supabase.from('patients').update({
+        [statusField]: newStatus,
+      }).eq('id', patient.id);
+      
+      fetchPatientData();
+    } catch (error) {
+      console.error('Error toggling pause:', error);
+    } finally {
+      setIsConfirming(false);
+      setShowPauseModal(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -110,31 +186,8 @@ export default function PatientDashboard() {
     );
   }
 
-  const lastChange = changes[0];
-  const lastChangeDate = lastChange ? new Date(lastChange.changed_at) : new Date(patient.start_date);
-  const nextChangeDate = new Date(lastChangeDate);
-  nextChangeDate.setDate(nextChangeDate.getDate() + patient.days_per_aligner);
-  const daysElapsed = Math.floor((Date.now() - lastChangeDate.getTime()) / (1000 * 60 * 60 * 24));
-
-  const handleConfirmChange = async () => {
-    setIsConfirming(true);
-    try {
-      const currentAligner = selectedArch === 'upper' ? patient.current_upper_aligner : patient.current_lower_aligner;
-      await supabase.from('aligner_changes').insert({
-        patient_id: patient.id,
-        aligner_number: currentAligner + 1,
-        arch: selectedArch,
-      });
-      const updateField = selectedArch === 'upper' ? 'current_upper_aligner' : 'current_lower_aligner';
-      await supabase.from('patients').update({ [updateField]: currentAligner + 1 }).eq('id', patient.id);
-      fetchPatientData();
-    } catch (error) {
-      console.error('Error confirming change:', error);
-    } finally {
-      setIsConfirming(false);
-      setShowConfirmModal(false);
-    }
-  };
+  const showUpperArch = patient.arch !== 'lower';
+  const showLowerArch = patient.arch !== 'upper';
 
   return (
     <div className="min-h-screen bg-background">
@@ -168,43 +221,59 @@ export default function PatientDashboard() {
           
           {activeTab === 'treatment' && (
             <>
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card-elevated p-6 rounded-3xl">
-                <h2 className="text-xl font-display font-bold mb-4">Seu Progresso</h2>
-                <div className="flex justify-center gap-8 mb-6">
-                  {patient.arch !== 'lower' && (
-                    <div className="text-center">
-                      <CircularProgress current={patient.current_upper_aligner} total={patient.upper_aligners} label="Superior" />
-                    </div>
-                  )}
-                  {patient.arch !== 'upper' && (
-                    <div className="text-center">
-                      <CircularProgress current={patient.current_lower_aligner} total={patient.lower_aligners} label="Inferior" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <TrendingUp className="w-4 h-4 text-success" />
-                  <span>Você está indo muito bem!</span>
-                </div>
-              </motion.div>
+              {/* Overall Progress */}
+              <OverallProgress
+                upperCurrent={patient.current_upper_aligner}
+                upperTotal={patient.upper_aligners}
+                lowerCurrent={patient.current_lower_aligner}
+                lowerTotal={patient.lower_aligners}
+                arch={patient.arch}
+              />
 
-              <DaysProgressBar daysElapsed={daysElapsed} totalDays={patient.days_per_aligner} nextChangeDate={nextChangeDate} />
-
-              <div className="space-y-3">
-                {patient.arch !== 'lower' && (
-                  <Button variant="accent" size="lg" className="w-full" onClick={() => { setSelectedArch('upper'); setShowConfirmModal(true); }}
-                    disabled={patient.current_upper_aligner >= patient.upper_aligners}>
-                    <ArrowUp className="w-5 h-5" /> Trocar Superior ({patient.current_upper_aligner} → {patient.current_upper_aligner + 1})
-                  </Button>
+              {/* Individual Arch Progress Cards */}
+              <div className="space-y-4">
+                {showUpperArch && (
+                  <ArchProgressCard
+                    arch="upper"
+                    currentAligner={patient.current_upper_aligner}
+                    totalAligners={patient.upper_aligners}
+                    status={getArchStatus('upper')}
+                    daysElapsed={calculateDaysElapsed('upper')}
+                    totalDays={patient.days_per_aligner}
+                    nextChangeDate={calculateNextChangeDate('upper')}
+                    onChangeClick={() => {
+                      setSelectedArch('upper');
+                      setShowConfirmModal(true);
+                    }}
+                    onPauseToggle={() => {
+                      setSelectedArch('upper');
+                      setShowPauseModal(true);
+                    }}
+                  />
                 )}
-                {patient.arch !== 'upper' && (
-                  <Button variant="gradient" size="lg" className="w-full" onClick={() => { setSelectedArch('lower'); setShowConfirmModal(true); }}
-                    disabled={patient.current_lower_aligner >= patient.lower_aligners}>
-                    <ArrowDown className="w-5 h-5" /> Trocar Inferior ({patient.current_lower_aligner} → {patient.current_lower_aligner + 1})
-                  </Button>
+                
+                {showLowerArch && (
+                  <ArchProgressCard
+                    arch="lower"
+                    currentAligner={patient.current_lower_aligner}
+                    totalAligners={patient.lower_aligners}
+                    status={getArchStatus('lower')}
+                    daysElapsed={calculateDaysElapsed('lower')}
+                    totalDays={patient.days_per_aligner}
+                    nextChangeDate={calculateNextChangeDate('lower')}
+                    onChangeClick={() => {
+                      setSelectedArch('lower');
+                      setShowConfirmModal(true);
+                    }}
+                    onPauseToggle={() => {
+                      setSelectedArch('lower');
+                      setShowPauseModal(true);
+                    }}
+                  />
                 )}
               </div>
 
+              {/* Quick Actions */}
               <div className="grid grid-cols-2 gap-4">
                 <button onClick={() => setShowPhotoModal(true)} className="glass-card p-5 rounded-2xl text-left hover:shadow-lg transition-all group">
                   <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
@@ -227,18 +296,26 @@ export default function PatientDashboard() {
           {activeTab === 'history' && (
             <div className="space-y-4">
               <h2 className="text-xl font-display font-bold">Histórico de Trocas</h2>
-              {changes.map((change, index) => (
-                <motion.div key={change.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }}
-                  className="glass-card p-4 rounded-xl flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${index === 0 ? 'bg-success/20' : 'bg-secondary'}`}>
-                    {change.arch === 'upper' ? <ArrowUp className="w-5 h-5" /> : <ArrowDown className="w-5 h-5" />}
-                  </div>
-                  <div>
-                    <p className="font-medium">{change.arch === 'upper' ? 'Superior' : 'Inferior'} #{change.aligner_number}</p>
-                    <p className="text-sm text-muted-foreground">{new Date(change.changed_at).toLocaleDateString('pt-BR')}</p>
-                  </div>
-                </motion.div>
-              ))}
+              {changes.length === 0 ? (
+                <div className="glass-card p-8 rounded-xl text-center">
+                  <p className="text-muted-foreground">Nenhuma troca registrada ainda.</p>
+                </div>
+              ) : (
+                changes.map((change, index) => (
+                  <motion.div key={change.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }}
+                    className="glass-card p-4 rounded-xl flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      index === 0 ? 'bg-success/20' : 'bg-secondary'
+                    } ${change.arch === 'upper' ? 'text-accent' : 'text-primary'}`}>
+                      {change.arch === 'upper' ? <ArrowUp className="w-5 h-5" /> : <ArrowDown className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <p className="font-medium">{change.arch === 'upper' ? 'Superior' : 'Inferior'} #{change.aligner_number}</p>
+                      <p className="text-sm text-muted-foreground">{new Date(change.changed_at).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                  </motion.div>
+                ))
+              )}
             </div>
           )}
 
@@ -254,16 +331,22 @@ export default function PatientDashboard() {
         </main>
       </div>
 
-      <PhotoUploadModal isOpen={showPhotoModal} onClose={() => setShowPhotoModal(false)} patientId={patient.id}
-        alignerNumber={patient.current_upper_aligner} onPhotoUploaded={fetchPatientData} />
+      <PhotoUploadModal 
+        isOpen={showPhotoModal} 
+        onClose={() => setShowPhotoModal(false)} 
+        patientId={patient.id}
+        alignerNumber={patient.current_upper_aligner} 
+        onPhotoUploaded={fetchPatientData} 
+      />
 
+      {/* Confirm Change Modal */}
       <AnimatePresence>
         {showConfirmModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowConfirmModal(false)}>
             <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }}
               onClick={(e) => e.stopPropagation()} className="glass-card-elevated p-8 rounded-3xl w-full max-w-md text-center">
-              <div className="w-20 h-20 rounded-3xl gradient-accent flex items-center justify-center mx-auto mb-6">
+              <div className={`w-20 h-20 rounded-3xl ${selectedArch === 'upper' ? 'gradient-accent' : 'gradient-primary'} flex items-center justify-center mx-auto mb-6`}>
                 {selectedArch === 'upper' ? <ArrowUp className="w-10 h-10 text-white" /> : <ArrowDown className="w-10 h-10 text-white" />}
               </div>
               <h2 className="text-2xl font-display font-bold mb-2">Confirmar Troca</h2>
@@ -277,6 +360,36 @@ export default function PatientDashboard() {
               <div className="flex gap-3">
                 <Button variant="secondary" className="flex-1" onClick={() => setShowConfirmModal(false)}>Cancelar</Button>
                 <Button variant="accent" className="flex-1" onClick={handleConfirmChange} disabled={isConfirming}>
+                  {isConfirming ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Check className="w-5 h-5" /> Confirmar</>}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Pause Toggle Modal */}
+      <AnimatePresence>
+        {showPauseModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowPauseModal(false)}>
+            <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }}
+              onClick={(e) => e.stopPropagation()} className="glass-card-elevated p-8 rounded-3xl w-full max-w-md text-center">
+              <div className="w-20 h-20 rounded-3xl bg-warning/20 flex items-center justify-center mx-auto mb-6">
+                <Pause className="w-10 h-10 text-warning" />
+              </div>
+              <h2 className="text-2xl font-display font-bold mb-2">
+                {getArchStatus(selectedArch) === 'pausado' ? 'Retomar Tratamento' : 'Pausar Tratamento'}
+              </h2>
+              <p className="text-muted-foreground mb-6">
+                {getArchStatus(selectedArch) === 'pausado' 
+                  ? `Deseja retomar o tratamento da arcada ${selectedArch === 'upper' ? 'superior' : 'inferior'}?`
+                  : `Deseja pausar o tratamento da arcada ${selectedArch === 'upper' ? 'superior' : 'inferior'}? A outra arcada continuará normalmente.`
+                }
+              </p>
+              <div className="flex gap-3">
+                <Button variant="secondary" className="flex-1" onClick={() => setShowPauseModal(false)}>Cancelar</Button>
+                <Button variant="accent" className="flex-1" onClick={handlePauseToggle} disabled={isConfirming}>
                   {isConfirming ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Check className="w-5 h-5" /> Confirmar</>}
                 </Button>
               </div>

@@ -102,6 +102,53 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          dentist_observation: string | null
+          id: string
+          is_read: boolean
+          message: string
+          patient_id: string
+          read_at: string | null
+          related_arch: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          dentist_observation?: string | null
+          id?: string
+          is_read?: boolean
+          message: string
+          patient_id: string
+          read_at?: string | null
+          related_arch?: string | null
+          title: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          dentist_observation?: string | null
+          id?: string
+          is_read?: boolean
+          message?: string
+          patient_id?: string
+          read_at?: string | null
+          related_arch?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           address: string | null

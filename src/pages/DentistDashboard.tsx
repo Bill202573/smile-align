@@ -6,6 +6,7 @@ import { PatientFormModal } from '@/components/dentist/PatientFormModal';
 import { DeliveryModal } from '@/components/dentist/DeliveryModal';
 import { DeliveryHistoryModal } from '@/components/dentist/DeliveryHistoryModal';
 import { TreatmentHistoryModal } from '@/components/dentist/TreatmentHistoryModal';
+import { ReleasePauseModal } from '@/components/dentist/ReleasePauseModal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -23,6 +24,10 @@ import {
   History,
   CheckCircle2,
   RefreshCw,
+  Pause,
+  Play,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import logo from '@/assets/logo.jpg';
 import { format, addDays } from 'date-fns';
@@ -51,12 +56,22 @@ interface PatientRow {
   gender: 'male' | 'female' | null;
   treatment_status: 'in_treatment' | 'completed' | 'refino';
   estimated_completion_date: string | null;
+  upper_arch_status: 'em_uso' | 'pausado' | 'finalizado' | null;
+  lower_arch_status: 'em_uso' | 'pausado' | 'finalizado' | null;
+  upper_last_change_date: string | null;
+  lower_last_change_date: string | null;
   // Refining fields
   refining_active: boolean;
   refining_upper_aligners: number;
   refining_lower_aligners: number;
   current_refining_upper: number;
   current_refining_lower: number;
+}
+
+interface PausedArchInfo {
+  arch: 'upper' | 'lower';
+  pauseReason: string;
+  pauseDate: string;
 }
 
 type StatusFilter = 'all' | 'on-track' | 'delayed';
@@ -72,11 +87,14 @@ export default function DentistDashboard() {
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [isDeliveryHistoryModalOpen, setIsDeliveryHistoryModalOpen] = useState(false);
   const [isTreatmentHistoryModalOpen, setIsTreatmentHistoryModalOpen] = useState(false);
+  const [isReleasePauseModalOpen, setIsReleasePauseModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<PatientRow | null>(null);
+  const [selectedPausedArch, setSelectedPausedArch] = useState<PausedArchInfo | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [treatmentFilter, setTreatmentFilter] = useState<TreatmentFilter>('all');
   const [dentistFilter, setDentistFilter] = useState<DentistFilter>('all');
+  const [isReleasingPause, setIsReleasingPause] = useState(false);
 
   useEffect(() => {
     fetchPatients();
@@ -169,6 +187,87 @@ export default function DentistDashboard() {
     e.stopPropagation();
     setSelectedPatient(patient);
     setIsTreatmentHistoryModalOpen(true);
+  };
+
+  const handleReleasePause = async (patient: PatientRow, arch: 'upper' | 'lower', e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Fetch the pause reason from treatment_history
+    const { data: historyData } = await supabase
+      .from('treatment_history')
+      .select('*')
+      .eq('patient_id', patient.id)
+      .eq('arch', arch)
+      .eq('event_type', 'pause_started')
+      .order('event_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    setSelectedPatient(patient);
+    setSelectedPausedArch({
+      arch,
+      pauseReason: historyData?.patient_reason || 'Motivo não informado',
+      pauseDate: historyData?.event_date || new Date().toISOString(),
+    });
+    setIsReleasePauseModalOpen(true);
+  };
+
+  const handleConfirmReleasePause = async (observation: string) => {
+    if (!selectedPatient || !selectedPausedArch) return;
+    
+    setIsReleasingPause(true);
+    try {
+      const statusField = selectedPausedArch.arch === 'upper' ? 'upper_arch_status' : 'lower_arch_status';
+      const lastChangeDateField = selectedPausedArch.arch === 'upper' ? 'upper_last_change_date' : 'lower_last_change_date';
+      
+      // Record release in treatment_history
+      await supabase.from('treatment_history').insert({
+        patient_id: selectedPatient.id,
+        arch: selectedPausedArch.arch,
+        event_type: 'pause_released',
+        aligner_from: selectedPausedArch.arch === 'upper' ? selectedPatient.current_upper_aligner : selectedPatient.current_lower_aligner,
+        aligner_to: selectedPausedArch.arch === 'upper' ? selectedPatient.current_upper_aligner : selectedPatient.current_lower_aligner,
+        is_refining: selectedPatient.refining_active || false,
+        dentist_note: observation,
+      });
+      
+      // Update patient status
+      await supabase.from('patients').update({
+        [statusField]: 'em_uso',
+        [lastChangeDateField]: new Date().toISOString().split('T')[0],
+      }).eq('id', selectedPatient.id);
+      
+      // Create notification for patient
+      await supabase.from('notifications').insert({
+        patient_id: selectedPatient.id,
+        title: 'Pausa Liberada',
+        message: `Sua dentista liberou a pausa da arcada ${selectedPausedArch.arch === 'upper' ? 'superior' : 'inferior'}. Confira as orientações.`,
+        type: 'pause_released',
+        related_arch: selectedPausedArch.arch,
+        dentist_observation: observation,
+      });
+      
+      toast.success('Pausa liberada com sucesso!');
+      fetchPatients();
+    } catch (error) {
+      console.error('Error releasing pause:', error);
+      toast.error('Erro ao liberar pausa');
+    } finally {
+      setIsReleasingPause(false);
+      setIsReleasePauseModalOpen(false);
+      setSelectedPausedArch(null);
+    }
+  };
+
+  const getArchStatusLabel = (status: string | null) => {
+    switch (status) {
+      case 'pausado':
+        return { label: 'Pausado', color: 'text-destructive' };
+      case 'finalizado':
+        return { label: 'Finalizado', color: 'text-success' };
+      default:
+        return { label: 'Em dia', color: 'text-success' };
+    }
   };
 
   return (
@@ -324,7 +423,7 @@ export default function DentistDashboard() {
                         </div>
                         
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="font-semibold text-foreground hover:text-primary transition-colors">
                               {patient.full_name}
                             </h3>
@@ -344,11 +443,63 @@ export default function DentistDashboard() {
                           {patient.process_number && (
                             <p className="text-xs text-muted-foreground">Processo: {patient.process_number}</p>
                           )}
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Sup: {patient.current_upper_aligner}/{patient.upper_aligners} • Inf: {patient.current_lower_aligner}/{patient.lower_aligners}
-                          </p>
+                          
+                          {/* Arch details with individual status */}
+                          <div className="mt-2 space-y-1">
+                            {patient.arch !== 'lower' && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <ArrowUp className="w-3 h-3 text-muted-foreground" />
+                                <span className="text-muted-foreground">
+                                  Sup: {patient.current_upper_aligner}/{patient.upper_aligners}
+                                </span>
+                                <span className={`text-xs font-medium ${getArchStatusLabel(patient.upper_arch_status).color}`}>
+                                  {patient.upper_arch_status === 'pausado' ? (
+                                    <button
+                                      onClick={(e) => handleReleasePause(patient, 'upper', e)}
+                                      className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-destructive/10 hover:bg-destructive/20 transition-colors"
+                                    >
+                                      <Pause className="w-3 h-3" />
+                                      Pausado
+                                      <Play className="w-3 h-3 ml-1" />
+                                    </button>
+                                  ) : (
+                                    <span className="flex items-center gap-1">
+                                      <Check className="w-3 h-3" />
+                                      {getArchStatusLabel(patient.upper_arch_status).label}
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                            )}
+                            {patient.arch !== 'upper' && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <ArrowDown className="w-3 h-3 text-muted-foreground" />
+                                <span className="text-muted-foreground">
+                                  Inf: {patient.current_lower_aligner}/{patient.lower_aligners}
+                                </span>
+                                <span className={`text-xs font-medium ${getArchStatusLabel(patient.lower_arch_status).color}`}>
+                                  {patient.lower_arch_status === 'pausado' ? (
+                                    <button
+                                      onClick={(e) => handleReleasePause(patient, 'lower', e)}
+                                      className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-destructive/10 hover:bg-destructive/20 transition-colors"
+                                    >
+                                      <Pause className="w-3 h-3" />
+                                      Pausado
+                                      <Play className="w-3 h-3 ml-1" />
+                                    </button>
+                                  ) : (
+                                    <span className="flex items-center gap-1">
+                                      <Check className="w-3 h-3" />
+                                      {getArchStatusLabel(patient.lower_arch_status).label}
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
                           {estimatedDate && !isCompleted && (
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm text-muted-foreground mt-1">
                               Previsão: {format(estimatedDate, 'dd/MM/yyyy', { locale: ptBR })}
                             </p>
                           )}
@@ -469,6 +620,18 @@ export default function DentistDashboard() {
             }}
             patientId={selectedPatient.id}
             patientName={selectedPatient.full_name}
+          />
+
+          <ReleasePauseModal
+            isOpen={isReleasePauseModalOpen}
+            onClose={() => {
+              setIsReleasePauseModalOpen(false);
+              setSelectedPausedArch(null);
+            }}
+            onConfirm={handleConfirmReleasePause}
+            patientName={selectedPatient.full_name}
+            pausedArch={selectedPausedArch}
+            isLoading={isReleasingPause}
           />
         </>
       )}

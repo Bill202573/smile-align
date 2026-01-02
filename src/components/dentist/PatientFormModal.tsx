@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Mail, Phone, MapPin, Calendar, Key, Copy, Check, RefreshCw } from 'lucide-react';
+import { X, User, Mail, Phone, MapPin, Calendar, Key, Copy, Check, RefreshCw, Stethoscope } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RefiningFormSection } from './RefiningFormSection';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -17,6 +18,7 @@ interface PatientFormModalProps {
   dentistId: string;
   dentistName: string;
   editPatient?: any;
+  defaultTab?: 'personal' | 'treatment';
 }
 
 export function PatientFormModal({
@@ -25,7 +27,8 @@ export function PatientFormModal({
   onSuccess,
   dentistId,
   dentistName,
-  editPatient
+  editPatient,
+  defaultTab = 'treatment'
 }: PatientFormModalProps) {
   const isEditing = !!editPatient;
   
@@ -51,12 +54,14 @@ export function PatientFormModal({
 
   const [formData, setFormData] = useState(getInitialFormData());
   const [provisionalPassword, setProvisionalPassword] = useState(editPatient?.provisional_password || '');
+  const [activeTab, setActiveTab] = useState<string>(isEditing ? defaultTab : 'personal');
 
   // Reset form when editPatient changes
   React.useEffect(() => {
     setFormData(getInitialFormData());
     setProvisionalPassword(editPatient?.provisional_password || '');
-  }, [editPatient, dentistName]);
+    setActiveTab(isEditing ? defaultTab : 'personal');
+  }, [editPatient, dentistName, defaultTab]);
   
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -210,237 +215,244 @@ export function PatientFormModal({
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Personal Info */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Dados Pessoais
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Nome Completo</Label>
-                  <Input
-                    value={formData.full_name}
-                    onChange={(e) => handleChange('full_name', e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>CPF</Label>
-                  <Input
-                    value={formData.cpf}
-                    onChange={(e) => handleChange('cpf', e.target.value)}
-                    placeholder="000.000.000-00"
-                  />
-                </div>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="personal" className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Dados Pessoais
+                </TabsTrigger>
+                <TabsTrigger value="treatment" className="flex items-center gap-2">
+                  <Stethoscope className="w-4 h-4" />
+                  Tratamento
+                </TabsTrigger>
+              </TabsList>
 
-                <div className="space-y-2">
-                  <Label>Nº do Processo</Label>
-                  <Input
-                    value={formData.process_number}
-                    onChange={(e) => handleChange('process_number', e.target.value)}
-                    placeholder="Número do processo"
-                  />
-                </div>
+              <TabsContent value="personal" className="space-y-6 mt-0">
+                {/* Personal Info */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Nome Completo</Label>
+                      <Input
+                        value={formData.full_name}
+                        onChange={(e) => handleChange('full_name', e.target.value)}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>CPF</Label>
+                      <Input
+                        value={formData.cpf}
+                        onChange={(e) => handleChange('cpf', e.target.value)}
+                        placeholder="000.000.000-00"
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label>Data de Nascimento</Label>
-                  <Input
-                    type="date"
-                    value={formData.birth_date}
-                    onChange={(e) => handleChange('birth_date', e.target.value)}
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label>Nº do Processo</Label>
+                      <Input
+                        value={formData.process_number}
+                        onChange={(e) => handleChange('process_number', e.target.value)}
+                        placeholder="Número do processo"
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label>Gênero</Label>
-                  <Select value={formData.gender} onValueChange={(v) => handleChange('gender', v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="male">Masculino</SelectItem>
-                      <SelectItem value="female">Feminino</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                    <div className="space-y-2">
+                      <Label>Data de Nascimento</Label>
+                      <Input
+                        type="date"
+                        value={formData.birth_date}
+                        onChange={(e) => handleChange('birth_date', e.target.value)}
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleChange('email', e.target.value)}
-                    disabled={isEditing}
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label>Gênero</Label>
+                      <Select value={formData.gender} onValueChange={(v) => handleChange('gender', v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Masculino</SelectItem>
+                          <SelectItem value="female">Feminino</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label>Telefone</Label>
-                  <Input
-                    value={formData.phone}
-                    onChange={(e) => handleChange('phone', e.target.value)}
-                    placeholder="(11) 99999-9999"
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label>Email</Label>
+                      <Input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => handleChange('email', e.target.value)}
+                        disabled={isEditing}
+                      />
+                    </div>
 
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Endereço</Label>
-                  <Input
-                    value={formData.address}
-                    onChange={(e) => handleChange('address', e.target.value)}
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label>Telefone</Label>
+                      <Input
+                        value={formData.phone}
+                        onChange={(e) => handleChange('phone', e.target.value)}
+                        placeholder="(11) 99999-9999"
+                      />
+                    </div>
 
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Nome do Dentista</Label>
-                  <Input
-                    value={formData.dentist_name}
-                    onChange={(e) => handleChange('dentist_name', e.target.value)}
-                    placeholder="Nome do dentista responsável"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Login Info */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <Key className="w-4 h-4" />
-                Acesso do Paciente
-              </h3>
-              
-              <div className="p-4 bg-muted rounded-xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Senha Provisória</p>
-                    <p className="text-xs text-muted-foreground">
-                      O paciente usará esta senha para o primeiro acesso
-                    </p>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Endereço</Label>
+                      <Input
+                        value={formData.address}
+                        onChange={(e) => handleChange('address', e.target.value)}
+                      />
+                    </div>
                   </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={generatePassword}
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Gerar Nova
-                  </Button>
-                </div>
-                
-                {provisionalPassword && (
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 p-3 bg-background rounded-lg font-mono text-lg">
-                      {provisionalPassword}
-                    </code>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="icon"
-                      onClick={copyToClipboard}
-                    >
-                      {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Treatment Info */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                Dados do Tratamento
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Arcada</Label>
-                  <Select value={formData.arch} onValueChange={(v) => handleChange('arch', v)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="upper">Superior</SelectItem>
-                      <SelectItem value="lower">Inferior</SelectItem>
-                      <SelectItem value="both">Ambas</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Alinhadores Superiores</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={formData.upper_aligners}
-                    onChange={(e) => handleChange('upper_aligners', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Alinhadores Inferiores</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={formData.lower_aligners}
-                    onChange={(e) => handleChange('lower_aligners', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Dias por Alinhador</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={formData.days_per_aligner}
-                    onChange={(e) => handleChange('days_per_aligner', parseInt(e.target.value) || 14)}
-                  />
-                </div>
-
-                <div className="space-y-2 md:col-span-3">
-                  <Label>Previsão de Conclusão</Label>
-                  <div className="p-3 bg-muted rounded-lg text-sm text-muted-foreground">
-                    {formData.upper_aligners > 0 || formData.lower_aligners > 0 ? (
-                      (() => {
-                        const maxAligners = Math.max(formData.upper_aligners, formData.lower_aligners);
-                        const totalDays = maxAligners * formData.days_per_aligner + 15;
-                        const estimatedDate = new Date();
-                        estimatedDate.setDate(estimatedDate.getDate() + totalDays);
-                        return `Aproximadamente ${estimatedDate.toLocaleDateString('pt-BR')} (${totalDays} dias a partir de hoje)`;
-                      })()
-                    ) : (
-                      'Preencha o número de alinhadores para calcular a previsão'
+                {/* Login Info */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-foreground flex items-center gap-2">
+                    <Key className="w-4 h-4" />
+                    Acesso do Paciente
+                  </h3>
+                  
+                  <div className="p-4 bg-muted rounded-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Senha Provisória</p>
+                        <p className="text-xs text-muted-foreground">
+                          O paciente usará esta senha para o primeiro acesso
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={generatePassword}
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        Gerar Nova
+                      </Button>
+                    </div>
+                    
+                    {provisionalPassword && (
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 p-3 bg-background rounded-lg font-mono text-lg">
+                          {provisionalPassword}
+                        </code>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="icon"
+                          onClick={copyToClipboard}
+                        >
+                          {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
-              </div>
-            </div>
+              </TabsContent>
 
-            {/* Refining Section - only show when editing and treatment is completed or in refino */}
-            {isEditing && (editPatient?.treatment_status === 'completed' || editPatient?.treatment_status === 'refino') && (
-              <RefiningFormSection
-                refiningActive={formData.refining_active}
-                refiningUpperAligners={formData.refining_upper_aligners}
-                refiningLowerAligners={formData.refining_lower_aligners}
-                onRefiningActiveChange={(active) => handleChange('refining_active', active)}
-                onRefiningUpperChange={(value) => handleChange('refining_upper_aligners', value)}
-                onRefiningLowerChange={(value) => handleChange('refining_lower_aligners', value)}
-              />
-            )}
+              <TabsContent value="treatment" className="space-y-6 mt-0">
+                {/* Treatment Info */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Nome do Dentista</Label>
+                      <Input
+                        value={formData.dentist_name}
+                        onChange={(e) => handleChange('dentist_name', e.target.value)}
+                        placeholder="Nome do dentista responsável"
+                      />
+                    </div>
 
-            {/* Notes */}
-            <div className="space-y-2">
-              <Label>Observações</Label>
-              <Textarea
-                value={formData.notes}
-                onChange={(e) => handleChange('notes', e.target.value)}
-                rows={3}
-                placeholder="Observações sobre o paciente..."
-              />
-            </div>
+                    <div className="space-y-2">
+                      <Label>Arcada</Label>
+                      <Select value={formData.arch} onValueChange={(v) => handleChange('arch', v)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="upper">Superior</SelectItem>
+                          <SelectItem value="lower">Inferior</SelectItem>
+                          <SelectItem value="both">Ambas</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Dias por Alinhador</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={formData.days_per_aligner}
+                        onChange={(e) => handleChange('days_per_aligner', parseInt(e.target.value) || 14)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Alinhadores Superiores</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={formData.upper_aligners}
+                        onChange={(e) => handleChange('upper_aligners', parseInt(e.target.value) || 0)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Alinhadores Inferiores</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={formData.lower_aligners}
+                        onChange={(e) => handleChange('lower_aligners', parseInt(e.target.value) || 0)}
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-3">
+                      <Label>Previsão de Conclusão</Label>
+                      <div className="p-3 bg-muted rounded-lg text-sm text-muted-foreground">
+                        {formData.upper_aligners > 0 || formData.lower_aligners > 0 ? (
+                          (() => {
+                            const maxAligners = Math.max(formData.upper_aligners, formData.lower_aligners);
+                            const totalDays = maxAligners * formData.days_per_aligner + 15;
+                            const estimatedDate = new Date();
+                            estimatedDate.setDate(estimatedDate.getDate() + totalDays);
+                            return `Aproximadamente ${estimatedDate.toLocaleDateString('pt-BR')} (${totalDays} dias a partir de hoje)`;
+                          })()
+                        ) : (
+                          'Preencha o número de alinhadores para calcular a previsão'
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Refining Section - only show when editing and treatment is completed or in refino */}
+                {isEditing && (editPatient?.treatment_status === 'completed' || editPatient?.treatment_status === 'refino') && (
+                  <RefiningFormSection
+                    refiningActive={formData.refining_active}
+                    refiningUpperAligners={formData.refining_upper_aligners}
+                    refiningLowerAligners={formData.refining_lower_aligners}
+                    onRefiningActiveChange={(active) => handleChange('refining_active', active)}
+                    onRefiningUpperChange={(value) => handleChange('refining_upper_aligners', value)}
+                    onRefiningLowerChange={(value) => handleChange('refining_lower_aligners', value)}
+                  />
+                )}
+
+                {/* Notes */}
+                <div className="space-y-2">
+                  <Label>Observações</Label>
+                  <Textarea
+                    value={formData.notes}
+                    onChange={(e) => handleChange('notes', e.target.value)}
+                    rows={3}
+                    placeholder="Observações sobre o paciente..."
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
 
             {/* Actions */}
             <div className="flex gap-3 pt-4">
@@ -450,10 +462,11 @@ export function PatientFormModal({
               <Button type="submit" variant="gradient" className="flex-1" disabled={isLoading}>
                 {isLoading ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : isEditing ? (
-                  'Salvar Alterações'
                 ) : (
-                  'Cadastrar Paciente'
+                  <>
+                    <Check className="w-4 h-4" />
+                    {isEditing ? 'Salvar Alterações' : 'Cadastrar Paciente'}
+                  </>
                 )}
               </Button>
             </div>

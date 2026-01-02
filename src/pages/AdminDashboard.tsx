@@ -273,12 +273,7 @@ export default function AdminDashboard() {
             </div>
 
             <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-display font-bold">Pacientes Cadastrados</h2>
-                <p className="text-sm text-muted-foreground">
-                  Previsão de conclusão baseada no último alinhador + 15 dias
-                </p>
-              </div>
+              <h2 className="text-xl font-display font-bold">Pacientes Cadastrados</h2>
               <Button variant="gradient" onClick={handleNewPatient}>
                 <Plus className="w-4 h-4" />
                 Novo Paciente
@@ -333,10 +328,12 @@ export default function AdminDashboard() {
                             )}
                             <p className="text-sm text-muted-foreground">
                               Sup: {patient.current_upper_aligner}/{patient.upper_aligners} • Inf: {patient.current_lower_aligner}/{patient.lower_aligners} • {patient.dentist_name || 'Sem dentista'}
-                              {estimatedDate && !isCompleted && (
-                                <span className="ml-2">• Previsão: {format(estimatedDate, 'dd/MM/yyyy', { locale: ptBR })}</span>
-                              )}
                             </p>
+                            {estimatedDate && !isCompleted && (
+                              <p className="text-sm text-muted-foreground">
+                                Previsão: {format(estimatedDate, 'dd/MM/yyyy', { locale: ptBR })}
+                              </p>
+                            )}
                           </div>
                         </div>
 

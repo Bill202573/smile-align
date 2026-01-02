@@ -349,6 +349,23 @@ export function PatientFormModal({
                     onChange={(e) => handleChange('days_per_aligner', parseInt(e.target.value) || 14)}
                   />
                 </div>
+
+                <div className="space-y-2 md:col-span-3">
+                  <Label>Previsão de Conclusão</Label>
+                  <div className="p-3 bg-muted rounded-lg text-sm text-muted-foreground">
+                    {formData.upper_aligners > 0 || formData.lower_aligners > 0 ? (
+                      (() => {
+                        const maxAligners = Math.max(formData.upper_aligners, formData.lower_aligners);
+                        const totalDays = maxAligners * formData.days_per_aligner + 15;
+                        const estimatedDate = new Date();
+                        estimatedDate.setDate(estimatedDate.getDate() + totalDays);
+                        return `Aproximadamente ${estimatedDate.toLocaleDateString('pt-BR')} (${totalDays} dias a partir de hoje)`;
+                      })()
+                    ) : (
+                      'Preencha o número de alinhadores para calcular a previsão'
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 

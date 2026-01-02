@@ -52,10 +52,55 @@ export type Database = {
           },
         ]
       }
+      aligner_deliveries: {
+        Row: {
+          delivered_at: string
+          delivered_by: string | null
+          id: string
+          lower_from: number
+          lower_to: number
+          notes: string | null
+          patient_id: string
+          upper_from: number
+          upper_to: number
+        }
+        Insert: {
+          delivered_at?: string
+          delivered_by?: string | null
+          id?: string
+          lower_from?: number
+          lower_to?: number
+          notes?: string | null
+          patient_id: string
+          upper_from?: number
+          upper_to?: number
+        }
+        Update: {
+          delivered_at?: string
+          delivered_by?: string | null
+          id?: string
+          lower_from?: number
+          lower_to?: number
+          notes?: string | null
+          patient_id?: string
+          upper_from?: number
+          upper_to?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aligner_deliveries_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           address: string | null
           arch: Database["public"]["Enums"]["arch_type"]
+          avatar_url: string | null
           birth_date: string
           cpf: string
           created_at: string
@@ -70,6 +115,7 @@ export type Database = {
           lower_aligners: number
           notes: string | null
           phone: string
+          provisional_password: string | null
           start_date: string
           updated_at: string
           upper_aligners: number
@@ -77,6 +123,7 @@ export type Database = {
         Insert: {
           address?: string | null
           arch?: Database["public"]["Enums"]["arch_type"]
+          avatar_url?: string | null
           birth_date: string
           cpf: string
           created_at?: string
@@ -91,6 +138,7 @@ export type Database = {
           lower_aligners?: number
           notes?: string | null
           phone: string
+          provisional_password?: string | null
           start_date?: string
           updated_at?: string
           upper_aligners?: number
@@ -98,6 +146,7 @@ export type Database = {
         Update: {
           address?: string | null
           arch?: Database["public"]["Enums"]["arch_type"]
+          avatar_url?: string | null
           birth_date?: string
           cpf?: string
           created_at?: string
@@ -112,6 +161,7 @@ export type Database = {
           lower_aligners?: number
           notes?: string | null
           phone?: string
+          provisional_password?: string | null
           start_date?: string
           updated_at?: string
           upper_aligners?: number

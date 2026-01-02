@@ -1,0 +1,366 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, User, Mail, Phone, MapPin, Calendar, Key, Copy, Check, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+interface PatientFormModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  dentistId: string;
+  dentistName: string;
+  editPatient?: any;
+}
+
+export function PatientFormModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  dentistId,
+  dentistName,
+  editPatient
+}: PatientFormModalProps) {
+  const isEditing = !!editPatient;
+  
+  const [formData, setFormData] = useState({
+    full_name: editPatient?.full_name || '',
+    cpf: editPatient?.cpf || '',
+    birth_date: editPatient?.birth_date || '',
+    email: editPatient?.email || '',
+    phone: editPatient?.phone || '',
+    address: editPatient?.address || '',
+    upper_aligners: editPatient?.upper_aligners || 0,
+    lower_aligners: editPatient?.lower_aligners || 0,
+    days_per_aligner: editPatient?.days_per_aligner || 14,
+    arch: editPatient?.arch || 'both',
+    notes: editPatient?.notes || '',
+  });
+
+  const [provisionalPassword, setProvisionalPassword] = useState(editPatient?.provisional_password || '');
+  const [isLoading, setIsLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    let password = '';
+    for (let i = 0; i < 8; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setProvisionalPassword(password);
+    return password;
+  };
+
+  const copyToClipboard = async () => {
+    await navigator.clipboard.writeText(provisionalPassword);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast.success('Senha copiada!');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const password = provisionalPassword || generatePassword();
+
+      if (isEditing) {
+        // Update existing patient
+        const { error } = await supabase
+          .from('patients')
+          .update({
+            ...formData,
+            provisional_password: password,
+          })
+          .eq('id', editPatient.id);
+
+        if (error) throw error;
+        toast.success('Paciente atualizado com sucesso!');
+      } else {
+        // Create user account first
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              full_name: formData.full_name,
+            }
+          }
+        });
+
+        if (authError) throw authError;
+
+        // Add patient role
+        if (authData.user) {
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert({
+              user_id: authData.user.id,
+              role: 'patient' as const,
+            });
+
+          if (roleError) console.error('Role error:', roleError);
+        }
+
+        // Create patient record
+        const { error: patientError } = await supabase
+          .from('patients')
+          .insert({
+            ...formData,
+            dentist_id: dentistId,
+            dentist_name: dentistName,
+            provisional_password: password,
+          });
+
+        if (patientError) throw patientError;
+        
+        toast.success('Paciente cadastrado com sucesso!');
+      }
+
+      onSuccess();
+      onClose();
+    } catch (error: any) {
+      console.error('Error saving patient:', error);
+      toast.error('Erro ao salvar: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          onClick={(e) => e.stopPropagation()}
+          className="glass-card-elevated p-6 rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto my-4"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-display font-bold">
+              {isEditing ? 'Editar Paciente' : 'Novo Paciente'}
+            </h2>
+            <Button variant="ghost" size="icon-sm" onClick={onClose}>
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Personal Info */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <User className="w-4 h-4" />
+                Dados Pessoais
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Nome Completo *</Label>
+                  <Input
+                    value={formData.full_name}
+                    onChange={(e) => handleChange('full_name', e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>CPF *</Label>
+                  <Input
+                    value={formData.cpf}
+                    onChange={(e) => handleChange('cpf', e.target.value)}
+                    placeholder="000.000.000-00"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Data de Nascimento *</Label>
+                  <Input
+                    type="date"
+                    value={formData.birth_date}
+                    onChange={(e) => handleChange('birth_date', e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Email *</Label>
+                  <Input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleChange('email', e.target.value)}
+                    required
+                    disabled={isEditing}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Telefone *</Label>
+                  <Input
+                    value={formData.phone}
+                    onChange={(e) => handleChange('phone', e.target.value)}
+                    placeholder="(11) 99999-9999"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Endereço</Label>
+                  <Input
+                    value={formData.address}
+                    onChange={(e) => handleChange('address', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Login Info */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <Key className="w-4 h-4" />
+                Acesso do Paciente
+              </h3>
+              
+              <div className="p-4 bg-muted rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Senha Provisória</p>
+                    <p className="text-xs text-muted-foreground">
+                      O paciente usará esta senha para o primeiro acesso
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={generatePassword}
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Gerar Nova
+                  </Button>
+                </div>
+                
+                {provisionalPassword && (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 p-3 bg-background rounded-lg font-mono text-lg">
+                      {provisionalPassword}
+                    </code>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon"
+                      onClick={copyToClipboard}
+                    >
+                      {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Treatment Info */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                Dados do Tratamento
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Arcada</Label>
+                  <Select value={formData.arch} onValueChange={(v) => handleChange('arch', v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="upper">Superior</SelectItem>
+                      <SelectItem value="lower">Inferior</SelectItem>
+                      <SelectItem value="both">Ambas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Alinhadores Superiores</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={formData.upper_aligners}
+                    onChange={(e) => handleChange('upper_aligners', parseInt(e.target.value) || 0)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Alinhadores Inferiores</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={formData.lower_aligners}
+                    onChange={(e) => handleChange('lower_aligners', parseInt(e.target.value) || 0)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Dias por Alinhador</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={formData.days_per_aligner}
+                    onChange={(e) => handleChange('days_per_aligner', parseInt(e.target.value) || 14)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label>Observações</Label>
+              <Textarea
+                value={formData.notes}
+                onChange={(e) => handleChange('notes', e.target.value)}
+                rows={3}
+                placeholder="Observações sobre o paciente..."
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-4">
+              <Button type="button" variant="secondary" className="flex-1" onClick={onClose}>
+                Cancelar
+              </Button>
+              <Button type="submit" variant="gradient" className="flex-1" disabled={isLoading}>
+                {isLoading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : isEditing ? (
+                  'Salvar Alterações'
+                ) : (
+                  'Cadastrar Paciente'
+                )}
+              </Button>
+            </div>
+          </form>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}

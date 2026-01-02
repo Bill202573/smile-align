@@ -41,6 +41,8 @@ export function PatientFormModal({
     days_per_aligner: editPatient?.days_per_aligner || 14,
     arch: editPatient?.arch || 'both',
     notes: editPatient?.notes || '',
+    gender: editPatient?.gender || '',
+    dentist_name: editPatient?.dentist_name || dentistName,
   });
 
   const [formData, setFormData] = useState(getInitialFormData());
@@ -50,7 +52,8 @@ export function PatientFormModal({
   React.useEffect(() => {
     setFormData(getInitialFormData());
     setProvisionalPassword(editPatient?.provisional_password || '');
-  }, [editPatient]);
+  }, [editPatient, dentistName]);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -80,10 +83,13 @@ export function PatientFormModal({
 
       if (isEditing) {
         // Update existing patient
+        const { gender, dentist_name, ...restData } = formData;
         const { error } = await supabase
           .from('patients')
           .update({
-            ...formData,
+            ...restData,
+            gender: gender || null,
+            dentist_name: dentist_name,
             provisional_password: password,
           })
           .eq('id', editPatient.id);
@@ -95,13 +101,15 @@ export function PatientFormModal({
         const { data: { user } } = await supabase.auth.getUser();
         const actualDentistId = user?.id || null;
 
-        // Create patient record first (without auth user for testing)
+        // Create patient record
+        const { gender, dentist_name, ...restData } = formData;
         const { error: patientError } = await supabase
           .from('patients')
           .insert({
-            ...formData,
+            ...restData,
+            gender: gender || null,
             dentist_id: actualDentistId,
-            dentist_name: dentistName,
+            dentist_name: dentist_name,
             provisional_password: password,
           });
 
@@ -196,6 +204,19 @@ export function PatientFormModal({
                 </div>
 
                 <div className="space-y-2">
+                  <Label>Gênero</Label>
+                  <Select value={formData.gender} onValueChange={(v) => handleChange('gender', v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Masculino</SelectItem>
+                      <SelectItem value="female">Feminino</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
                   <Label>Email</Label>
                   <Input
                     type="email"
@@ -219,6 +240,15 @@ export function PatientFormModal({
                   <Input
                     value={formData.address}
                     onChange={(e) => handleChange('address', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Nome do Dentista</Label>
+                  <Input
+                    value={formData.dentist_name}
+                    onChange={(e) => handleChange('dentist_name', e.target.value)}
+                    placeholder="Nome do dentista responsável"
                   />
                 </div>
               </div>

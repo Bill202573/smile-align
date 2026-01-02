@@ -13,7 +13,7 @@ import { ProfileTab } from '@/components/patient/ProfileTab';
 import { PauseReasonModal } from '@/components/patient/PauseReasonModal';
 import { NotificationBanner } from '@/components/patient/NotificationBanner';
 import { NotificationsTab } from '@/components/patient/NotificationsTab';
-import logo from '@/assets/logo.jpg';
+import logo from '@/assets/logo.png';
 import {
   Check,
   Camera,
@@ -199,6 +199,17 @@ export default function PatientDashboard() {
       await supabase.from('patients').update({
         [statusField]: 'pausado',
       }).eq('id', patient.id);
+
+      // Notificar dentista sobre a pausa
+      if (patient.dentist_id) {
+        await supabase.from('dentist_notifications').insert({
+          dentist_id: patient.dentist_id,
+          patient_id: patient.id,
+          notification_id: crypto.randomUUID(),
+          title: `Pausa - ${patient.full_name}`,
+          message: `Paciente ${patient.full_name} pausou o tratamento da arcada ${selectedArch === 'upper' ? 'superior' : 'inferior'}. Motivo: ${finalReason}`,
+        });
+      }
       
       fetchPatientData();
     } catch (error) {

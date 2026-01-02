@@ -266,12 +266,7 @@ export default function DentistDashboard() {
         {/* Patient List */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-display font-bold">Meus Pacientes</h2>
-              <p className="text-sm text-muted-foreground">
-                Previsão de conclusão baseada no último alinhador + 15 dias
-              </p>
-            </div>
+            <h2 className="text-xl font-display font-bold">Meus Pacientes</h2>
             <Button variant="gradient" onClick={handleNewPatient}>
               <Plus className="w-4 h-4" />
               Novo Paciente
@@ -328,10 +323,12 @@ export default function DentistDashboard() {
                           )}
                           <p className="text-sm text-muted-foreground mt-1">
                             Sup: {patient.current_upper_aligner}/{patient.upper_aligners} • Inf: {patient.current_lower_aligner}/{patient.lower_aligners}
-                            {estimatedDate && !isCompleted && (
-                              <span className="ml-2">• Previsão: {format(estimatedDate, 'dd/MM/yyyy', { locale: ptBR })}</span>
-                            )}
                           </p>
+                          {estimatedDate && !isCompleted && (
+                            <p className="text-sm text-muted-foreground">
+                              Previsão: {format(estimatedDate, 'dd/MM/yyyy', { locale: ptBR })}
+                            </p>
+                          )}
                         </div>
                       </div>
 

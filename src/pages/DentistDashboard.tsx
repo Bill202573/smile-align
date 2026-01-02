@@ -9,13 +9,13 @@ import { TreatmentHistoryModal } from '@/components/dentist/TreatmentHistoryModa
 import { ReleasePauseModal } from '@/components/dentist/ReleasePauseModal';
 import { CommunicationsTab } from '@/components/dentist/CommunicationsTab';
 import { DentistNotificationsSection } from '@/components/dentist/DentistNotificationsSection';
+import { DentistNotificationsPopover } from '@/components/dentist/DentistNotificationsPopover';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   LogOut,
   Users,
-  Bell,
   Search,
   User,
   Check,
@@ -33,7 +33,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import logo from '@/assets/logo.jpg';
-import { format, addDays } from 'date-fns';
+import { format, addDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface PatientRow {
@@ -139,14 +139,41 @@ export default function DentistDashboard() {
     }
   };
 
+  // Improved patient status calculation based on aligner progress vs expected
   const getPatientStatus = (patient: PatientRow) => {
-    const totalProgress = patient.current_upper_aligner + patient.current_lower_aligner;
-    const totalAligners = patient.upper_aligners + patient.lower_aligners;
-    const progress = totalAligners > 0 ? (totalProgress / totalAligners) * 100 : 0;
-    
-    if (progress >= 90) return 'delayed';
-    if (progress >= 50) return 'pending';
-    return 'on-track';
+    // Completed patients are always on-track
+    if (patient.treatment_status === 'completed') {
+      return 'on-track';
+    }
+
+    // Check if any arch is paused
+    if (patient.upper_arch_status === 'pausado' || patient.lower_arch_status === 'pausado') {
+      return 'delayed';
+    }
+
+    // For patients in treatment or refining, check if they're behind schedule
+    const today = new Date();
+    let isDelayed = false;
+
+    // Check upper arch
+    if (patient.arch !== 'lower' && patient.upper_last_change_date) {
+      const lastChange = new Date(patient.upper_last_change_date);
+      const daysSinceChange = differenceInDays(today, lastChange);
+      if (daysSinceChange > patient.days_per_aligner) {
+        isDelayed = true;
+      }
+    }
+
+    // Check lower arch
+    if (patient.arch !== 'upper' && patient.lower_last_change_date) {
+      const lastChange = new Date(patient.lower_last_change_date);
+      const daysSinceChange = differenceInDays(today, lastChange);
+      if (daysSinceChange > patient.days_per_aligner) {
+        isDelayed = true;
+      }
+    }
+
+    return isDelayed ? 'delayed' : 'on-track';
   };
 
   const statusConfig = {
@@ -155,12 +182,16 @@ export default function DentistDashboard() {
     'delayed': { label: 'Atenção', color: 'bg-destructive/20 text-destructive', icon: AlertTriangle },
   };
 
+  // Stats calculations
+  const patientsInTreatment = patients.filter(p => p.treatment_status === 'in_treatment').length;
+  const patientsCompleted = patients.filter(p => p.treatment_status === 'completed').length;
+  const patientsRefining = patients.filter(p => p.treatment_status === 'refino').length;
+  const patientsNeedingAttention = patients.filter(p => getPatientStatus(p) === 'delayed').length;
+
   const filteredPatients = patients.filter(patient => {
     const matchesSearch = patient.full_name.toLowerCase().includes(searchTerm.toLowerCase());
     const status = getPatientStatus(patient);
-    const matchesStatus = statusFilter === 'all' || status === statusFilter || 
-      (statusFilter === 'on-track' && status === 'on-track') ||
-      (statusFilter === 'delayed' && (status === 'delayed' || status === 'pending'));
+    const matchesStatus = statusFilter === 'all' || status === statusFilter;
     const matchesTreatment = treatmentFilter === 'all' || patient.treatment_status === treatmentFilter;
     const matchesDentist = dentistFilter === 'all' || patient.dentist_name === dentistFilter;
     return matchesSearch && matchesStatus && matchesTreatment && matchesDentist;
@@ -288,12 +319,7 @@ export default function DentistDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon-sm" className="relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full text-[10px] text-white flex items-center justify-center">
-                3
-              </span>
-            </Button>
+            <DentistNotificationsPopover dentistId={user?.id || ''} />
             <Button variant="ghost" size="icon-sm" onClick={logout}>
               <LogOut className="w-5 h-5" />
             </Button>
@@ -341,11 +367,13 @@ export default function DentistDashboard() {
         {mainTab === 'patients' && (
           <>
             {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           {[
             { label: 'Pacientes', value: patients.length, icon: Users, color: 'bg-primary/10 text-primary' },
-            { label: 'Em dia', value: patients.filter(p => getPatientStatus(p) === 'on-track').length, icon: Check, color: 'bg-success/10 text-success' },
-            { label: 'Atenção', value: patients.filter(p => getPatientStatus(p) === 'delayed').length, icon: AlertTriangle, color: 'bg-destructive/10 text-destructive' },
+            { label: 'Em tratamento', value: patientsInTreatment, icon: Clock, color: 'bg-primary/10 text-primary' },
+            { label: 'Finalizados', value: patientsCompleted, icon: CheckCircle2, color: 'bg-success/10 text-success' },
+            { label: 'Em refino', value: patientsRefining, icon: RefreshCw, color: 'bg-accent/10 text-accent' },
+            { label: 'Atenção', value: patientsNeedingAttention, icon: AlertTriangle, color: 'bg-destructive/10 text-destructive' },
           ].map((stat, index) => {
             const Icon = stat.icon;
             return (
@@ -354,13 +382,13 @@ export default function DentistDashboard() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="glass-card p-4 rounded-2xl text-center"
+                className="glass-card p-3 rounded-2xl text-center"
               >
-                <div className={`w-10 h-10 rounded-xl ${stat.color} flex items-center justify-center mx-auto mb-2`}>
-                  <Icon className="w-5 h-5" />
+                <div className={`w-8 h-8 rounded-xl ${stat.color} flex items-center justify-center mx-auto mb-2`}>
+                  <Icon className="w-4 h-4" />
                 </div>
-                <p className="text-2xl font-display font-bold">{stat.value}</p>
-                <p className="text-xs text-muted-foreground">{stat.label}</p>
+                <p className="text-xl font-display font-bold">{stat.value}</p>
+                <p className="text-[10px] text-muted-foreground">{stat.label}</p>
               </motion.div>
             );
           })}
@@ -625,6 +653,7 @@ export default function DentistDashboard() {
         dentistId={user?.id || ''}
         dentistName={user?.name || ''}
         editPatient={selectedPatient}
+        defaultTab="treatment"
       />
 
       {selectedPatient && (

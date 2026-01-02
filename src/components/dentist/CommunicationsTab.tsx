@@ -20,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Notification {
   id: string;
@@ -39,11 +40,13 @@ interface Notification {
 interface Patient {
   id: string;
   full_name: string;
+  dentist_id: string | null;
 }
 
 type FilterStatus = 'all' | 'unread' | 'read';
 
 export function CommunicationsTab() {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,19 +65,24 @@ export function CommunicationsTab() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch patients
+      // Fetch patients for this dentist
       const { data: patientsData } = await supabase
         .from('patients')
-        .select('id, full_name')
+        .select('id, full_name, dentist_id')
         .order('full_name');
       
       setPatients(patientsData || []);
 
-      // Fetch all notifications
-      const { data: notificationsData } = await supabase
+      // Fetch only notifications of type 'message' sent by dentist
+      const { data: notificationsData, error } = await supabase
         .from('notifications')
         .select('*')
+        .eq('type', 'message')
         .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching notifications:', error);
+      }
 
       // Map patient names to notifications
       const notificationsWithPatients = (notificationsData || []).map(notification => {
@@ -102,13 +110,13 @@ export function CommunicationsTab() {
 
     setIsSending(true);
     try {
-      const { error } = await supabase.from('notifications').insert({
+      const { data, error } = await supabase.from('notifications').insert({
         patient_id: selectedPatientId,
         title: messageTitle.trim(),
         message: messageContent.trim(),
         type: 'message',
         dentist_observation: messageContent.trim(),
-      });
+      }).select().single();
 
       if (error) throw error;
 
@@ -117,6 +125,8 @@ export function CommunicationsTab() {
       setSelectedPatientId('');
       setMessageTitle('');
       setMessageContent('');
+      
+      // Refresh data to show the new message
       fetchData();
     } catch (error) {
       console.error('Error sending message:', error);
@@ -139,32 +149,6 @@ export function CommunicationsTab() {
     return matchesStatus && matchesSearch;
   });
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'pause_released':
-        return 'Pausa Liberada';
-      case 'message':
-        return 'Mensagem';
-      case 'reminder':
-        return 'Lembrete';
-      default:
-        return 'Notificação';
-    }
-  };
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'pause_released':
-        return 'bg-success/20 text-success';
-      case 'message':
-        return 'bg-primary/20 text-primary';
-      case 'reminder':
-        return 'bg-warning/20 text-warning';
-      default:
-        return 'bg-secondary text-muted-foreground';
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -177,7 +161,7 @@ export function CommunicationsTab() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-display font-bold">Comunicados</h2>
+        <h2 className="text-xl font-display font-bold">Comunicados Enviados</h2>
         <Button variant="gradient" onClick={() => setIsNewMessageOpen(true)}>
           <Plus className="w-4 h-4" />
           Novo Comunicado
@@ -213,15 +197,15 @@ export function CommunicationsTab() {
       <div className="grid grid-cols-3 gap-3">
         <div className="glass-card p-4 rounded-xl text-center">
           <p className="text-2xl font-bold text-foreground">{notifications.length}</p>
-          <p className="text-xs text-muted-foreground">Total</p>
+          <p className="text-xs text-muted-foreground">Total Enviados</p>
         </div>
         <div className="glass-card p-4 rounded-xl text-center">
           <p className="text-2xl font-bold text-warning">{notifications.filter(n => !n.is_read).length}</p>
-          <p className="text-xs text-muted-foreground">Não lidos</p>
+          <p className="text-xs text-muted-foreground">Aguardando Leitura</p>
         </div>
         <div className="glass-card p-4 rounded-xl text-center">
           <p className="text-2xl font-bold text-success">{notifications.filter(n => n.is_read).length}</p>
-          <p className="text-xs text-muted-foreground">Lidos</p>
+          <p className="text-xs text-muted-foreground">Confirmados</p>
         </div>
       </div>
 
@@ -244,23 +228,20 @@ export function CommunicationsTab() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.03 }}
-              className={`glass-card p-4 rounded-2xl ${!notification.is_read ? 'border-l-4 border-l-primary' : ''}`}
+              className={`glass-card p-4 rounded-2xl ${!notification.is_read ? 'border-l-4 border-l-warning' : 'border-l-4 border-l-success'}`}
             >
               <div className="flex items-start gap-3">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  !notification.is_read ? 'bg-primary/20' : 'bg-secondary'
+                  notification.is_read ? 'bg-success/20' : 'bg-warning/20'
                 }`}>
-                  <User className={`w-5 h-5 ${!notification.is_read ? 'text-primary' : 'text-muted-foreground'}`} />
+                  <User className={`w-5 h-5 ${notification.is_read ? 'text-success' : 'text-warning'}`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <span className="font-medium text-foreground">{notification.patient?.full_name || 'Paciente'}</span>
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${getTypeColor(notification.type)}`}>
-                      {getTypeLabel(notification.type)}
-                    </span>
-                    <div className={`flex items-center gap-1 text-xs ${notification.is_read ? 'text-success' : 'text-muted-foreground'}`}>
+                    <div className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${notification.is_read ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'}`}>
                       {notification.is_read ? <CheckCheck className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                      <span>{notification.is_read ? 'Lido' : 'Não lido'}</span>
+                      <span>{notification.is_read ? 'Confirmado' : 'Aguardando'}</span>
                     </div>
                   </div>
                   <h4 className="font-semibold text-sm text-foreground">{notification.title}</h4>
@@ -268,7 +249,7 @@ export function CommunicationsTab() {
                   <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                     <span>Enviado: {format(new Date(notification.created_at), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</span>
                     {notification.is_read && notification.read_at && (
-                      <span>Lido: {format(new Date(notification.read_at), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</span>
+                      <span className="text-success">Confirmado: {format(new Date(notification.read_at), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</span>
                     )}
                   </div>
                 </div>

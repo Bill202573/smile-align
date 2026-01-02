@@ -113,11 +113,21 @@ export default function PatientDashboard() {
       const totalAligners = selectedArch === 'upper' ? patient.upper_aligners : patient.lower_aligners;
       const newAlignerNumber = currentAligner + 1;
       
-      // Insert change record
+      // Insert change record in aligner_changes
       await supabase.from('aligner_changes').insert({
         patient_id: patient.id,
         aligner_number: newAlignerNumber,
         arch: selectedArch,
+      });
+
+      // Insert event in treatment_history
+      await supabase.from('treatment_history').insert({
+        patient_id: patient.id,
+        arch: selectedArch,
+        event_type: 'aligner_change',
+        aligner_from: currentAligner,
+        aligner_to: newAlignerNumber,
+        is_refining: patient.refining_active || false,
       });
       
       // Update patient - only the specific arch
@@ -133,6 +143,25 @@ export default function PatientDashboard() {
       // Check if this was the last aligner
       if (newAlignerNumber >= totalAligners) {
         updateData[statusField] = 'finalizado';
+        
+        // Record arch completion in history
+        await supabase.from('treatment_history').insert({
+          patient_id: patient.id,
+          arch: selectedArch,
+          event_type: 'arch_completed',
+          aligner_from: newAlignerNumber,
+          aligner_to: newAlignerNumber,
+          is_refining: patient.refining_active || false,
+        });
+
+        // Check if both arches are now finalized
+        const otherArchFinalized = selectedArch === 'upper' 
+          ? (patient.current_lower_aligner >= patient.lower_aligners || patient.arch === 'upper')
+          : (patient.current_upper_aligner >= patient.upper_aligners || patient.arch === 'lower');
+        
+        if (otherArchFinalized && !patient.refining_active) {
+          updateData.treatment_status = 'completed';
+        }
       }
       
       await supabase.from('patients').update(updateData).eq('id', patient.id);
@@ -151,6 +180,16 @@ export default function PatientDashboard() {
       const statusField = selectedArch === 'upper' ? 'upper_arch_status' : 'lower_arch_status';
       const currentStatus = getArchStatus(selectedArch);
       const newStatus = currentStatus === 'pausado' ? 'em_uso' : 'pausado';
+      
+      // Record event in treatment_history
+      await supabase.from('treatment_history').insert({
+        patient_id: patient.id,
+        arch: selectedArch,
+        event_type: newStatus === 'pausado' ? 'pause_started' : 'pause_released',
+        aligner_from: selectedArch === 'upper' ? patient.current_upper_aligner : patient.current_lower_aligner,
+        aligner_to: selectedArch === 'upper' ? patient.current_upper_aligner : patient.current_lower_aligner,
+        is_refining: patient.refining_active || false,
+      });
       
       await supabase.from('patients').update({
         [statusField]: newStatus,

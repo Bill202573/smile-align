@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { PatientFormModal } from '@/components/dentist/PatientFormModal';
 import { DeliveryModal } from '@/components/dentist/DeliveryModal';
 import { DeliveryHistoryModal } from '@/components/dentist/DeliveryHistoryModal';
+import { TreatmentHistoryModal } from '@/components/dentist/TreatmentHistoryModal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -25,11 +26,12 @@ import {
   AlertTriangle,
   Clock,
   CheckCircle2,
+  RefreshCw,
 } from 'lucide-react';
 
 type ArchType = 'upper' | 'lower' | 'both';
 type StatusFilter = 'all' | 'on-track' | 'delayed';
-type TreatmentFilter = 'all' | 'in_treatment' | 'completed';
+type TreatmentFilter = 'all' | 'in_treatment' | 'completed' | 'refino';
 type DentistFilter = 'all' | string;
 
 interface PatientRow {
@@ -53,8 +55,14 @@ interface PatientRow {
   provisional_password: string | null;
   process_number: string | null;
   gender: 'male' | 'female' | null;
-  treatment_status: 'in_treatment' | 'completed';
+  treatment_status: 'in_treatment' | 'completed' | 'refino';
   estimated_completion_date: string | null;
+  // Refining fields
+  refining_active: boolean;
+  refining_upper_aligners: number;
+  refining_lower_aligners: number;
+  current_refining_upper: number;
+  current_refining_lower: number;
 }
 
 export default function AdminDashboard() {
@@ -65,7 +73,8 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'patients' | 'production'>('patients');
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isDeliveryHistoryModalOpen, setIsDeliveryHistoryModalOpen] = useState(false);
+  const [isTreatmentHistoryModalOpen, setIsTreatmentHistoryModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<PatientRow | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -142,10 +151,16 @@ export default function AdminDashboard() {
     setIsDeliveryModalOpen(true);
   };
 
-  const handleHistory = (patient: PatientRow, e: React.MouseEvent) => {
+  const handleDeliveryHistory = (patient: PatientRow, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedPatient(patient);
-    setIsHistoryModalOpen(true);
+    setIsDeliveryHistoryModalOpen(true);
+  };
+
+  const handleTreatmentHistory = (patient: PatientRow, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedPatient(patient);
+    setIsTreatmentHistoryModalOpen(true);
   };
 
   const filteredPatients = patients.filter(patient => {
@@ -249,11 +264,12 @@ export default function AdminDashboard() {
                   <SelectTrigger className="w-[160px]">
                     <SelectValue placeholder="Tratamento" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="in_treatment">Em tratamento</SelectItem>
-                    <SelectItem value="completed">Finalizado</SelectItem>
-                  </SelectContent>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="in_treatment">Em tratamento</SelectItem>
+                <SelectItem value="completed">Finalizado</SelectItem>
+                <SelectItem value="refino">Em refino</SelectItem>
+              </SelectContent>
                 </Select>
 
                 {uniqueDentists.length > 0 && (
@@ -371,7 +387,7 @@ export default function AdminDashboard() {
                             <Button 
                               variant="ghost" 
                               size="icon-sm"
-                              onClick={(e) => handleHistory(patient, e)}
+                              onClick={(e) => handleDeliveryHistory(patient, e)}
                               title="Histórico de entregas"
                             >
                               <History className="w-5 h-5" />
@@ -440,9 +456,19 @@ export default function AdminDashboard() {
           />
 
           <DeliveryHistoryModal
-            isOpen={isHistoryModalOpen}
+            isOpen={isDeliveryHistoryModalOpen}
             onClose={() => {
-              setIsHistoryModalOpen(false);
+              setIsDeliveryHistoryModalOpen(false);
+              setSelectedPatient(null);
+            }}
+            patientId={selectedPatient.id}
+            patientName={selectedPatient.full_name}
+          />
+
+          <TreatmentHistoryModal
+            isOpen={isTreatmentHistoryModalOpen}
+            onClose={() => {
+              setIsTreatmentHistoryModalOpen(false);
               setSelectedPatient(null);
             }}
             patientId={selectedPatient.id}

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RefiningFormSection } from './RefiningFormSection';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -43,6 +44,9 @@ export function PatientFormModal({
     notes: editPatient?.notes || '',
     gender: editPatient?.gender || '',
     dentist_name: editPatient?.dentist_name || dentistName,
+    refining_active: editPatient?.refining_active || false,
+    refining_upper_aligners: editPatient?.refining_upper_aligners || 0,
+    refining_lower_aligners: editPatient?.refining_lower_aligners || 0,
   });
 
   const [formData, setFormData] = useState(getInitialFormData());
@@ -80,21 +84,64 @@ export function PatientFormModal({
 
     try {
       const password = provisionalPassword || generatePassword();
+      const wasRefiningActive = editPatient?.refining_active || false;
+      const isNowRefining = formData.refining_active;
+      const startingRefining = !wasRefiningActive && isNowRefining;
 
       if (isEditing) {
         // Update existing patient
-        const { gender, dentist_name, ...restData } = formData;
+        const { gender, dentist_name, refining_active, refining_upper_aligners, refining_lower_aligners, ...restData } = formData;
+        
+        const updatePayload: Record<string, any> = {
+          ...restData,
+          gender: gender || null,
+          dentist_name: dentist_name,
+          provisional_password: password,
+          refining_active: refining_active,
+          refining_upper_aligners: refining_upper_aligners,
+          refining_lower_aligners: refining_lower_aligners,
+        };
+
+        // If starting refining, set status to refino and reset refining progress
+        if (startingRefining) {
+          updatePayload.treatment_status = 'refino';
+          updatePayload.current_refining_upper = 1;
+          updatePayload.current_refining_lower = 1;
+          updatePayload.refining_upper_status = 'em_uso';
+          updatePayload.refining_lower_status = 'em_uso';
+          updatePayload.refining_upper_last_change = new Date().toISOString().split('T')[0];
+          updatePayload.refining_lower_last_change = new Date().toISOString().split('T')[0];
+        }
+
         const { error } = await supabase
           .from('patients')
-          .update({
-            ...restData,
-            gender: gender || null,
-            dentist_name: dentist_name,
-            provisional_password: password,
-          })
+          .update(updatePayload)
           .eq('id', editPatient.id);
 
         if (error) throw error;
+
+        // Record refining started in history
+        if (startingRefining) {
+          await supabase.from('treatment_history').insert([
+            {
+              patient_id: editPatient.id,
+              arch: 'upper',
+              event_type: 'refining_started',
+              aligner_from: 0,
+              aligner_to: 1,
+              is_refining: true,
+            },
+            {
+              patient_id: editPatient.id,
+              arch: 'lower',
+              event_type: 'refining_started',
+              aligner_from: 0,
+              aligner_to: 1,
+              is_refining: true,
+            },
+          ]);
+        }
+
         toast.success('Paciente atualizado com sucesso!');
       } else {
         // Get current user for dentist_id
@@ -102,7 +149,7 @@ export function PatientFormModal({
         const actualDentistId = user?.id || null;
 
         // Create patient record
-        const { gender, dentist_name, ...restData } = formData;
+        const { gender, dentist_name, refining_active, refining_upper_aligners, refining_lower_aligners, ...restData } = formData;
         const { error: patientError } = await supabase
           .from('patients')
           .insert({
@@ -111,6 +158,9 @@ export function PatientFormModal({
             dentist_id: actualDentistId,
             dentist_name: dentist_name,
             provisional_password: password,
+            refining_active: refining_active,
+            refining_upper_aligners: refining_upper_aligners,
+            refining_lower_aligners: refining_lower_aligners,
           });
 
         if (patientError) throw patientError;
@@ -368,6 +418,18 @@ export function PatientFormModal({
                 </div>
               </div>
             </div>
+
+            {/* Refining Section - only show when editing and treatment is completed or in refino */}
+            {isEditing && (editPatient?.treatment_status === 'completed' || editPatient?.treatment_status === 'refino') && (
+              <RefiningFormSection
+                refiningActive={formData.refining_active}
+                refiningUpperAligners={formData.refining_upper_aligners}
+                refiningLowerAligners={formData.refining_lower_aligners}
+                onRefiningActiveChange={(active) => handleChange('refining_active', active)}
+                onRefiningUpperChange={(value) => handleChange('refining_upper_aligners', value)}
+                onRefiningLowerChange={(value) => handleChange('refining_lower_aligners', value)}
+              />
+            )}
 
             {/* Notes */}
             <div className="space-y-2">

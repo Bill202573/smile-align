@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { PatientFormModal } from '@/components/dentist/PatientFormModal';
 import { DeliveryModal } from '@/components/dentist/DeliveryModal';
 import { DeliveryHistoryModal } from '@/components/dentist/DeliveryHistoryModal';
+import { TreatmentHistoryModal } from '@/components/dentist/TreatmentHistoryModal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -21,6 +22,7 @@ import {
   Package,
   History,
   CheckCircle2,
+  RefreshCw,
 } from 'lucide-react';
 import logo from '@/assets/logo.jpg';
 import { format, addDays } from 'date-fns';
@@ -47,12 +49,18 @@ interface PatientRow {
   provisional_password: string | null;
   process_number: string | null;
   gender: 'male' | 'female' | null;
-  treatment_status: 'in_treatment' | 'completed';
+  treatment_status: 'in_treatment' | 'completed' | 'refino';
   estimated_completion_date: string | null;
+  // Refining fields
+  refining_active: boolean;
+  refining_upper_aligners: number;
+  refining_lower_aligners: number;
+  current_refining_upper: number;
+  current_refining_lower: number;
 }
 
 type StatusFilter = 'all' | 'on-track' | 'delayed';
-type TreatmentFilter = 'all' | 'in_treatment' | 'completed';
+type TreatmentFilter = 'all' | 'in_treatment' | 'completed' | 'refino';
 type DentistFilter = 'all' | string;
 
 export default function DentistDashboard() {
@@ -62,7 +70,8 @@ export default function DentistDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isDeliveryHistoryModalOpen, setIsDeliveryHistoryModalOpen] = useState(false);
+  const [isTreatmentHistoryModalOpen, setIsTreatmentHistoryModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<PatientRow | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -150,10 +159,16 @@ export default function DentistDashboard() {
     setIsDeliveryModalOpen(true);
   };
 
-  const handleHistory = (patient: PatientRow, e: React.MouseEvent) => {
+  const handleDeliveryHistory = (patient: PatientRow, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedPatient(patient);
-    setIsHistoryModalOpen(true);
+    setIsDeliveryHistoryModalOpen(true);
+  };
+
+  const handleTreatmentHistory = (patient: PatientRow, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedPatient(patient);
+    setIsTreatmentHistoryModalOpen(true);
   };
 
   return (
@@ -244,6 +259,7 @@ export default function DentistDashboard() {
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="in_treatment">Em tratamento</SelectItem>
                 <SelectItem value="completed">Finalizado</SelectItem>
+                <SelectItem value="refino">Em refino</SelectItem>
               </SelectContent>
             </Select>
 
@@ -289,6 +305,7 @@ export default function DentistDashboard() {
 
                 const estimatedDate = getEstimatedCompletion(patient);
                 const isCompleted = patient.treatment_status === 'completed';
+                const isRefining = patient.treatment_status === 'refino';
 
                 return (
                   <motion.div
@@ -315,6 +332,12 @@ export default function DentistDashboard() {
                               <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/20 text-success flex items-center gap-1">
                                 <CheckCircle2 className="w-3 h-3" />
                                 Finalizado
+                              </span>
+                            )}
+                            {isRefining && (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-accent/20 text-accent flex items-center gap-1">
+                                <RefreshCw className="w-3 h-3" />
+                                Refino
                               </span>
                             )}
                           </div>
@@ -347,11 +370,24 @@ export default function DentistDashboard() {
                           {progress}%
                         </span>
 
-                        {!isCompleted && (
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1 ${config.color}`}>
+                        {!isCompleted && !isRefining && (
+                          <button
+                            onClick={(e) => handleTreatmentHistory(patient, e)}
+                            className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1 ${config.color} hover:opacity-80 transition-opacity`}
+                          >
                             <StatusIcon className="w-3 h-3" />
                             {config.label}
-                          </span>
+                          </button>
+                        )}
+
+                        {isRefining && (
+                          <button
+                            onClick={(e) => handleTreatmentHistory(patient, e)}
+                            className="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1 bg-accent/20 text-accent hover:opacity-80 transition-opacity"
+                          >
+                            <RefreshCw className="w-3 h-3" />
+                            {patient.current_refining_upper}/{patient.refining_upper_aligners} • {patient.current_refining_lower}/{patient.refining_lower_aligners}
+                          </button>
                         )}
 
                         <div className="flex items-center gap-1">
@@ -366,7 +402,7 @@ export default function DentistDashboard() {
                           <Button 
                             variant="ghost" 
                             size="icon-sm"
-                            onClick={(e) => handleHistory(patient, e)}
+                            onClick={(e) => handleDeliveryHistory(patient, e)}
                             title="Histórico de entregas"
                           >
                             <History className="w-4 h-4" />
@@ -416,9 +452,19 @@ export default function DentistDashboard() {
           />
 
           <DeliveryHistoryModal
-            isOpen={isHistoryModalOpen}
+            isOpen={isDeliveryHistoryModalOpen}
             onClose={() => {
-              setIsHistoryModalOpen(false);
+              setIsDeliveryHistoryModalOpen(false);
+              setSelectedPatient(null);
+            }}
+            patientId={selectedPatient.id}
+            patientName={selectedPatient.full_name}
+          />
+
+          <TreatmentHistoryModal
+            isOpen={isTreatmentHistoryModalOpen}
+            onClose={() => {
+              setIsTreatmentHistoryModalOpen(false);
               setSelectedPatient(null);
             }}
             patientId={selectedPatient.id}

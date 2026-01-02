@@ -223,17 +223,17 @@ export default function DentistDashboard() {
                     onClick={() => handlePatientClick(patient)}
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <User className="w-7 h-7 text-primary" />
                       </div>
                       
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-foreground truncate hover:text-primary transition-colors">
+                        <div className="flex items-start gap-3 mb-1">
+                          <h3 className="font-semibold text-foreground truncate flex-1 hover:text-primary transition-colors">
                             {patient.full_name}
                           </h3>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-                            <StatusIcon className="w-3 h-3 inline mr-1" />
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 flex items-center gap-1 ${config.color}`}>
+                            <StatusIcon className="w-3 h-3" />
                             {config.label}
                           </span>
                         </div>
@@ -250,7 +250,7 @@ export default function DentistDashboard() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 flex-shrink-0">
                         <Button 
                           variant="ghost" 
                           size="icon-sm"

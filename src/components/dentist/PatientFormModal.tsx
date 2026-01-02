@@ -31,6 +31,7 @@ export function PatientFormModal({
   const [formData, setFormData] = useState({
     full_name: editPatient?.full_name || '',
     cpf: editPatient?.cpf || '',
+    process_number: editPatient?.process_number || '',
     birth_date: editPatient?.birth_date || '',
     email: editPatient?.email || '',
     phone: editPatient?.phone || '',
@@ -166,6 +167,15 @@ export function PatientFormModal({
                     value={formData.cpf}
                     onChange={(e) => handleChange('cpf', e.target.value)}
                     placeholder="000.000.000-00"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Nº do Processo</Label>
+                  <Input
+                    value={formData.process_number}
+                    onChange={(e) => handleChange('process_number', e.target.value)}
+                    placeholder="Número do processo"
                   />
                 </div>
 

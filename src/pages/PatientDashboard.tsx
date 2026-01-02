@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { PatientSidebar } from '@/components/patient/PatientSidebar';
+import { PatientHeader } from '@/components/patient/PatientHeader';
 import { ArchProgressCard } from '@/components/patient/ArchProgressCard';
 import { OverallProgress } from '@/components/patient/OverallProgress';
 import { PhotoUploadModal } from '@/components/patient/PhotoUploadModal';
@@ -288,6 +289,12 @@ export default function PatientDashboard() {
         </header>
 
         <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
+          {/* Patient Header - visible on all pages */}
+          <PatientHeader 
+            fullName={patient.full_name} 
+            avatarUrl={patient.avatar_url} 
+          />
+
           {activeTab === 'profile' && <ProfileTab patient={patient} onUpdate={fetchPatientData} />}
           
           {activeTab === 'treatment' && (

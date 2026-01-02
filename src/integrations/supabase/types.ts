@@ -121,6 +121,8 @@ export type Database = {
           gender: Database["public"]["Enums"]["gender_type"] | null
           id: string
           lower_aligners: number
+          lower_arch_status: Database["public"]["Enums"]["arch_status"] | null
+          lower_last_change_date: string | null
           notes: string | null
           phone: string
           process_number: string | null
@@ -129,6 +131,8 @@ export type Database = {
           treatment_status: Database["public"]["Enums"]["treatment_status"]
           updated_at: string
           upper_aligners: number
+          upper_arch_status: Database["public"]["Enums"]["arch_status"] | null
+          upper_last_change_date: string | null
         }
         Insert: {
           address?: string | null
@@ -148,6 +152,8 @@ export type Database = {
           gender?: Database["public"]["Enums"]["gender_type"] | null
           id?: string
           lower_aligners?: number
+          lower_arch_status?: Database["public"]["Enums"]["arch_status"] | null
+          lower_last_change_date?: string | null
           notes?: string | null
           phone: string
           process_number?: string | null
@@ -156,6 +162,8 @@ export type Database = {
           treatment_status?: Database["public"]["Enums"]["treatment_status"]
           updated_at?: string
           upper_aligners?: number
+          upper_arch_status?: Database["public"]["Enums"]["arch_status"] | null
+          upper_last_change_date?: string | null
         }
         Update: {
           address?: string | null
@@ -175,6 +183,8 @@ export type Database = {
           gender?: Database["public"]["Enums"]["gender_type"] | null
           id?: string
           lower_aligners?: number
+          lower_arch_status?: Database["public"]["Enums"]["arch_status"] | null
+          lower_last_change_date?: string | null
           notes?: string | null
           phone?: string
           process_number?: string | null
@@ -183,6 +193,8 @@ export type Database = {
           treatment_status?: Database["public"]["Enums"]["treatment_status"]
           updated_at?: string
           upper_aligners?: number
+          upper_arch_status?: Database["public"]["Enums"]["arch_status"] | null
+          upper_last_change_date?: string | null
         }
         Relationships: []
       }
@@ -379,6 +391,7 @@ export type Database = {
     }
     Enums: {
       app_role: "patient" | "dentist" | "admin" | "refiner"
+      arch_status: "em_uso" | "pausado" | "finalizado"
       arch_type: "upper" | "lower" | "both"
       gender_type: "male" | "female"
       photo_type: "before" | "during" | "progress"
@@ -518,6 +531,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["patient", "dentist", "admin", "refiner"],
+      arch_status: ["em_uso", "pausado", "finalizado"],
       arch_type: ["upper", "lower", "both"],
       gender_type: ["male", "female"],
       photo_type: ["before", "during", "progress"],

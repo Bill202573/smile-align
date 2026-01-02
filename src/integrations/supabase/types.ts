@@ -116,7 +116,9 @@ export type Database = {
           dentist_id: string | null
           dentist_name: string | null
           email: string
+          estimated_completion_date: string | null
           full_name: string
+          gender: Database["public"]["Enums"]["gender_type"] | null
           id: string
           lower_aligners: number
           notes: string | null
@@ -124,6 +126,7 @@ export type Database = {
           process_number: string | null
           provisional_password: string | null
           start_date: string
+          treatment_status: Database["public"]["Enums"]["treatment_status"]
           updated_at: string
           upper_aligners: number
         }
@@ -140,7 +143,9 @@ export type Database = {
           dentist_id?: string | null
           dentist_name?: string | null
           email: string
+          estimated_completion_date?: string | null
           full_name: string
+          gender?: Database["public"]["Enums"]["gender_type"] | null
           id?: string
           lower_aligners?: number
           notes?: string | null
@@ -148,6 +153,7 @@ export type Database = {
           process_number?: string | null
           provisional_password?: string | null
           start_date?: string
+          treatment_status?: Database["public"]["Enums"]["treatment_status"]
           updated_at?: string
           upper_aligners?: number
         }
@@ -164,7 +170,9 @@ export type Database = {
           dentist_id?: string | null
           dentist_name?: string | null
           email?: string
+          estimated_completion_date?: string | null
           full_name?: string
+          gender?: Database["public"]["Enums"]["gender_type"] | null
           id?: string
           lower_aligners?: number
           notes?: string | null
@@ -172,6 +180,7 @@ export type Database = {
           process_number?: string | null
           provisional_password?: string | null
           start_date?: string
+          treatment_status?: Database["public"]["Enums"]["treatment_status"]
           updated_at?: string
           upper_aligners?: number
         }
@@ -371,6 +380,7 @@ export type Database = {
     Enums: {
       app_role: "patient" | "dentist" | "admin" | "refiner"
       arch_type: "upper" | "lower" | "both"
+      gender_type: "male" | "female"
       photo_type: "before" | "during" | "progress"
       production_status:
         | "files_received"
@@ -379,6 +389,7 @@ export type Database = {
         | "printed"
         | "ready_for_refining"
       refining_status: "received" | "refining" | "completed" | "returned"
+      treatment_status: "in_treatment" | "completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -508,6 +519,7 @@ export const Constants = {
     Enums: {
       app_role: ["patient", "dentist", "admin", "refiner"],
       arch_type: ["upper", "lower", "both"],
+      gender_type: ["male", "female"],
       photo_type: ["before", "during", "progress"],
       production_status: [
         "files_received",
@@ -517,6 +529,7 @@ export const Constants = {
         "ready_for_refining",
       ],
       refining_status: ["received", "refining", "completed", "returned"],
+      treatment_status: ["in_treatment", "completed"],
     },
   },
 } as const

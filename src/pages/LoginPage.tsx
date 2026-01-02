@@ -15,7 +15,8 @@ import {
   Stethoscope, 
   Shield, 
   Sparkles,
-  ChevronLeft
+  ChevronLeft,
+  UserPlus
 } from 'lucide-react';
 
 const roleConfig: Record<UserRole, { icon: React.ElementType; label: string; description: string; color: string }> = {
@@ -46,40 +47,86 @@ const roleConfig: Record<UserRole, { icon: React.ElementType; label: string; des
 };
 
 export default function LoginPage() {
-  const [step, setStep] = useState<'role' | 'login'>('role');
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [step, setStep] = useState<'role' | 'form'>('role');
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   
-  const { login } = useAuth();
+  const { login, signup } = useAuth();
   const navigate = useNavigate();
 
   const handleRoleSelect = (role: UserRole) => {
     setSelectedRole(role);
-    setStep('login');
+    setStep('form');
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedRole) return;
     
     setIsLoading(true);
     setError('');
+    setSuccess('');
     
     try {
-      const success = await login(email, password, selectedRole);
-      if (success) {
-        navigate(`/${selectedRole}`);
+      if (mode === 'login') {
+        const result = await login(email, password);
+        if (result.success) {
+          // Navigation will be handled by App.tsx based on user role
+        } else {
+          setError(result.error || 'Erro ao fazer login.');
+        }
       } else {
-        setError('Credenciais inválidas. Tente novamente.');
+        if (!selectedRole) {
+          setError('Selecione um perfil.');
+          setIsLoading(false);
+          return;
+        }
+        
+        if (password.length < 6) {
+          setError('A senha deve ter pelo menos 6 caracteres.');
+          setIsLoading(false);
+          return;
+        }
+        
+        const result = await signup(email, password, fullName, selectedRole);
+        if (result.success) {
+          setSuccess('Conta criada com sucesso! Você já pode fazer login.');
+          setMode('login');
+          setStep('form');
+          setPassword('');
+        } else {
+          setError(result.error || 'Erro ao criar conta.');
+        }
       }
     } catch {
-      setError('Erro ao fazer login. Tente novamente.');
+      setError('Erro inesperado. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleBack = () => {
+    if (mode === 'signup' && step === 'form') {
+      setStep('role');
+    } else {
+      setMode('login');
+      setStep('form');
+      setSelectedRole(null);
+    }
+    setError('');
+    setSuccess('');
+  };
+
+  const switchToSignup = () => {
+    setMode('signup');
+    setStep('role');
+    setError('');
+    setSuccess('');
   };
 
   return (
@@ -108,15 +155,24 @@ export default function LoginPage() {
           </p>
         </motion.div>
 
-        {step === 'role' ? (
+        {/* Signup - Role Selection */}
+        {mode === 'signup' && step === 'role' && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4 }}
             className="w-full max-w-md space-y-4"
           >
+            <button
+              onClick={handleBack}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Voltar
+            </button>
+            
             <h2 className="text-xl font-semibold text-center mb-6">
-              Selecione seu perfil
+              Selecione seu perfil para cadastro
             </h2>
             <div className="grid grid-cols-2 gap-4">
               {(Object.keys(roleConfig) as UserRole[]).map((role, index) => {
@@ -141,99 +197,159 @@ export default function LoginPage() {
               })}
             </div>
           </motion.div>
-        ) : (
+        )}
+
+        {/* Login or Signup Form */}
+        {(mode === 'login' || (mode === 'signup' && step === 'form')) && (
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4 }}
             className="w-full max-w-md"
           >
-            <button
-              onClick={() => setStep('role')}
-              className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Voltar
-            </button>
+            {mode === 'signup' && (
+              <button
+                onClick={handleBack}
+                className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Voltar
+              </button>
+            )}
 
-            {selectedRole && (
-              <div className="glass-card p-8 rounded-3xl">
-                <div className="flex items-center gap-4 mb-8">
-                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${roleConfig[selectedRole].color} flex items-center justify-center`}>
-                    {React.createElement(roleConfig[selectedRole].icon, { className: "w-7 h-7 text-white" })}
+            <div className="glass-card p-8 rounded-3xl">
+              <div className="flex items-center gap-4 mb-8">
+                {mode === 'signup' && selectedRole ? (
+                  <>
+                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${roleConfig[selectedRole].color} flex items-center justify-center`}>
+                      {React.createElement(roleConfig[selectedRole].icon, { className: "w-7 h-7 text-white" })}
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-semibold">Cadastro - {roleConfig[selectedRole].label}</h2>
+                      <p className="text-sm text-muted-foreground">{roleConfig[selectedRole].description}</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-14 h-14 rounded-2xl gradient-hero flex items-center justify-center">
+                      <Smile className="w-7 h-7 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-semibold">Entrar</h2>
+                      <p className="text-sm text-muted-foreground">Acesse sua conta</p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {mode === 'signup' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Nome completo</Label>
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input
+                        id="fullName"
+                        type="text"
+                        placeholder="Seu nome completo"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="pl-12"
+                        required
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-xl font-semibold">{roleConfig[selectedRole].label}</h2>
-                    <p className="text-sm text-muted-foreground">{roleConfig[selectedRole].description}</p>
+                )}
+                
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-12"
+                      required
+                    />
                   </div>
                 </div>
 
-                <form onSubmit={handleLogin} className="space-y-5">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="pl-12"
-                        required
-                      />
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Senha</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-12"
+                      required
+                      minLength={6}
+                    />
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Senha</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="pl-12"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {error && (
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="text-destructive text-sm text-center"
-                    >
-                      {error}
-                    </motion.p>
+                  {mode === 'signup' && (
+                    <p className="text-xs text-muted-foreground">Mínimo de 6 caracteres</p>
                   )}
+                </div>
 
-                  <Button
-                    type="submit"
-                    variant="gradient"
-                    size="lg"
-                    className="w-full"
-                    disabled={isLoading}
+                {error && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-destructive text-sm text-center"
                   >
-                    {isLoading ? (
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        Entrar
-                        <ArrowRight className="w-5 h-5" />
-                      </>
-                    )}
-                  </Button>
-                </form>
+                    {error}
+                  </motion.p>
+                )}
 
-                <p className="text-center text-sm text-muted-foreground mt-6">
-                  Demo: use qualquer email e senha (min. 4 caracteres)
-                </p>
-              </div>
-            )}
+                {success && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-green-600 text-sm text-center"
+                  >
+                    {success}
+                  </motion.p>
+                )}
+
+                <Button
+                  type="submit"
+                  variant="gradient"
+                  size="lg"
+                  className="w-full"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      {mode === 'login' ? 'Entrar' : 'Criar conta'}
+                      <ArrowRight className="w-5 h-5" />
+                    </>
+                  )}
+                </Button>
+              </form>
+
+              {mode === 'login' && (
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Não tem uma conta?{' '}
+                    <button
+                      onClick={switchToSignup}
+                      className="text-primary hover:underline font-medium inline-flex items-center gap-1"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Cadastre-se
+                    </button>
+                  </p>
+                </div>
+              )}
+            </div>
           </motion.div>
         )}
       </div>

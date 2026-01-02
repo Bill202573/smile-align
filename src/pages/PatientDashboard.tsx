@@ -301,7 +301,9 @@ export default function PatientDashboard() {
             <>
               {/* Notifications */}
               <NotificationBanner 
-                patientId={patient.id} 
+                patientId={patient.id}
+                patientName={patient.full_name}
+                dentistId={patient.dentist_id}
                 onNotificationsChange={fetchUnreadNotifications}
               />
 

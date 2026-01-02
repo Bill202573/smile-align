@@ -8,6 +8,7 @@ import { DeliveryHistoryModal } from '@/components/dentist/DeliveryHistoryModal'
 import { TreatmentHistoryModal } from '@/components/dentist/TreatmentHistoryModal';
 import { ReleasePauseModal } from '@/components/dentist/ReleasePauseModal';
 import { CommunicationsTab } from '@/components/dentist/CommunicationsTab';
+import { DentistNotificationsSection } from '@/components/dentist/DentistNotificationsSection';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -327,7 +328,15 @@ export default function DentistDashboard() {
           </button>
         </div>
 
-        {mainTab === 'communications' && <CommunicationsTab />}
+        {mainTab === 'communications' && (
+          <div className="space-y-6">
+            {/* Confirmações de recebimento dos pacientes */}
+            <DentistNotificationsSection />
+            
+            {/* Comunicados enviados */}
+            <CommunicationsTab />
+          </div>
+        )}
 
         {mainTab === 'patients' && (
           <>

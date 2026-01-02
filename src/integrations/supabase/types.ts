@@ -102,6 +102,42 @@ export type Database = {
           },
         ]
       }
+      dentist_notifications: {
+        Row: {
+          created_at: string
+          dentist_id: string
+          id: string
+          is_read: boolean
+          message: string
+          notification_id: string
+          patient_id: string
+          read_at: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          dentist_id: string
+          id?: string
+          is_read?: boolean
+          message: string
+          notification_id: string
+          patient_id: string
+          read_at?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          dentist_id?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          notification_id?: string
+          patient_id?: string
+          read_at?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string

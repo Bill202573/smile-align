@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Bell, Check, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bell, Check, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -20,14 +20,14 @@ interface Notification {
 
 interface NotificationBannerProps {
   patientId: string;
+  patientName: string;
+  dentistId?: string | null;
   onNotificationsChange?: () => void;
 }
 
-export function NotificationBanner({ patientId, onNotificationsChange }: NotificationBannerProps) {
+export function NotificationBanner({ patientId, patientName, dentistId, onNotificationsChange }: NotificationBannerProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchNotifications();
@@ -49,25 +49,43 @@ export function NotificationBanner({ patientId, onNotificationsChange }: Notific
     }
   };
 
-  const handleConfirmRead = async (notificationId: string) => {
-    setLoadingId(notificationId);
+  const handleConfirmRead = async (notification: Notification) => {
+    setLoadingId(notification.id);
     try {
-      const { error } = await supabase
+      // Update notification as read
+      const { error: updateError } = await supabase
         .from('notifications')
         .update({
           is_read: true,
           read_at: new Date().toISOString(),
         })
-        .eq('id', notificationId);
+        .eq('id', notification.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      setNotifications(prev => prev.filter(n => n.id !== notificationId));
-      toast.success('Notificação marcada como lida!');
+      // Notify the dentist if dentist_id exists
+      if (dentistId) {
+        const { error: notifyError } = await supabase
+          .from('dentist_notifications')
+          .insert({
+            dentist_id: dentistId,
+            patient_id: patientId,
+            notification_id: notification.id,
+            title: `${patientName} confirmou recebimento`,
+            message: `O paciente confirmou o recebimento do comunicado: "${notification.title}"`,
+          });
+
+        if (notifyError) {
+          console.error('Error notifying dentist:', notifyError);
+        }
+      }
+
+      setNotifications(prev => prev.filter(n => n.id !== notification.id));
+      toast.success('Recebimento confirmado!');
       onNotificationsChange?.();
     } catch (error) {
-      console.error('Error marking notification as read:', error);
-      toast.error('Erro ao marcar como lida');
+      console.error('Error confirming read:', error);
+      toast.error('Erro ao confirmar recebimento');
     } finally {
       setLoadingId(null);
     }
@@ -119,10 +137,7 @@ export function NotificationBanner({ patientId, onNotificationsChange }: Notific
             exit={{ opacity: 0, x: -100 }}
             className="glass-card border-2 border-primary/30 rounded-2xl overflow-hidden"
           >
-            <div 
-              className="p-4 bg-primary/5 cursor-pointer"
-              onClick={() => setExpandedId(expandedId === notification.id ? null : notification.id)}
-            >
+            <div className="p-4 bg-primary/5">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
                   <MessageSquare className="w-5 h-5 text-primary" />
@@ -137,60 +152,42 @@ export function NotificationBanner({ patientId, onNotificationsChange }: Notific
                     </span>
                   </div>
                   <h3 className="font-semibold text-foreground">{notification.title}</h3>
-                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{notification.message}</p>
-                </div>
-                <div className="flex-shrink-0">
-                  {expandedId === notification.id ? (
-                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  
+                  {/* Full message always visible */}
+                  <p className="text-sm text-foreground/80 mt-2 whitespace-pre-wrap">
+                    {notification.message}
+                  </p>
+
+                  {notification.dentist_observation && notification.dentist_observation !== notification.message && (
+                    <div className="bg-secondary/50 rounded-xl p-3 mt-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <MessageSquare className="w-4 h-4 text-primary" />
+                        <span className="text-xs font-medium">Orientação da dentista:</span>
+                      </div>
+                      <p className="text-sm text-foreground whitespace-pre-wrap">{notification.dentist_observation}</p>
+                    </div>
                   )}
+                  
+                  {/* Confirm receipt button */}
+                  <Button
+                    variant="accent"
+                    size="sm"
+                    className="w-full mt-4"
+                    onClick={() => handleConfirmRead(notification)}
+                    disabled={loadingId === notification.id}
+                  >
+                    {loadingId === notification.id ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        Confirmar Recebimento
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             </div>
-
-            <AnimatePresence>
-              {expandedId === notification.id && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="p-4 pt-0 space-y-4">
-                    {notification.dentist_observation && (
-                      <div className="bg-secondary/50 rounded-xl p-3 mt-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <MessageSquare className="w-4 h-4 text-primary" />
-                          <span className="text-xs font-medium">Orientação da dentista:</span>
-                        </div>
-                        <p className="text-sm text-foreground whitespace-pre-wrap">{notification.dentist_observation}</p>
-                      </div>
-                    )}
-                    
-                    <Button
-                      variant="accent"
-                      size="sm"
-                      className="w-full"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleConfirmRead(notification.id);
-                      }}
-                      disabled={loadingId === notification.id}
-                    >
-                      {loadingId === notification.id ? (
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <Check className="w-4 h-4" />
-                          Marcar como lida
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </motion.div>
         ))}
       </AnimatePresence>

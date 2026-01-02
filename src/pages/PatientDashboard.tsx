@@ -9,6 +9,8 @@ import { OverallProgress } from '@/components/patient/OverallProgress';
 import { PhotoUploadModal } from '@/components/patient/PhotoUploadModal';
 import { PhotoGallery } from '@/components/patient/PhotoGallery';
 import { ProfileTab } from '@/components/patient/ProfileTab';
+import { PauseReasonModal } from '@/components/patient/PauseReasonModal';
+import { NotificationBanner } from '@/components/patient/NotificationBanner';
 import logo from '@/assets/logo.jpg';
 import {
   Check,
@@ -36,6 +38,7 @@ export default function PatientDashboard() {
   const [patient, setPatient] = useState<any>(null);
   const [changes, setChanges] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
     fetchPatientData();
@@ -174,35 +177,51 @@ export default function PatientDashboard() {
     }
   };
 
-  const handlePauseToggle = async () => {
+  const handlePauseWithReason = async (reason: string, customReason?: string) => {
     setIsConfirming(true);
     try {
       const statusField = selectedArch === 'upper' ? 'upper_arch_status' : 'lower_arch_status';
-      const currentStatus = getArchStatus(selectedArch);
-      const newStatus = currentStatus === 'pausado' ? 'em_uso' : 'pausado';
+      const finalReason = customReason ? `${reason}: ${customReason}` : reason;
       
-      // Record event in treatment_history
+      // Record event in treatment_history with reason
       await supabase.from('treatment_history').insert({
         patient_id: patient.id,
         arch: selectedArch,
-        event_type: newStatus === 'pausado' ? 'pause_started' : 'pause_released',
+        event_type: 'pause_started',
         aligner_from: selectedArch === 'upper' ? patient.current_upper_aligner : patient.current_lower_aligner,
         aligner_to: selectedArch === 'upper' ? patient.current_upper_aligner : patient.current_lower_aligner,
         is_refining: patient.refining_active || false,
+        patient_reason: finalReason,
       });
       
       await supabase.from('patients').update({
-        [statusField]: newStatus,
+        [statusField]: 'pausado',
       }).eq('id', patient.id);
       
       fetchPatientData();
     } catch (error) {
-      console.error('Error toggling pause:', error);
+      console.error('Error pausing treatment:', error);
     } finally {
       setIsConfirming(false);
       setShowPauseModal(false);
     }
   };
+
+  const fetchUnreadNotifications = async () => {
+    if (!patient?.id) return;
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('patient_id', patient.id)
+      .eq('is_read', false);
+    setUnreadNotifications(count || 0);
+  };
+
+  useEffect(() => {
+    if (patient?.id) {
+      fetchUnreadNotifications();
+    }
+  }, [patient?.id]);
 
   if (isLoading) {
     return (
@@ -249,7 +268,14 @@ export default function PatientDashboard() {
               <img src={logo} alt="Stelle" className="h-8" />
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon-sm"><Bell className="w-5 h-5" /></Button>
+              <Button variant="ghost" size="icon-sm" className="relative">
+                <Bell className="w-5 h-5" />
+                {unreadNotifications > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full text-[10px] text-white flex items-center justify-center">
+                    {unreadNotifications}
+                  </span>
+                )}
+              </Button>
               <Button variant="ghost" size="icon-sm" onClick={logout}><LogOut className="w-5 h-5" /></Button>
             </div>
           </div>
@@ -260,6 +286,12 @@ export default function PatientDashboard() {
           
           {activeTab === 'treatment' && (
             <>
+              {/* Notifications */}
+              <NotificationBanner 
+                patientId={patient.id} 
+                onNotificationsChange={fetchUnreadNotifications}
+              />
+
               {/* Overall Progress */}
               <OverallProgress
                 upperCurrent={patient.current_upper_aligner}
@@ -407,35 +439,14 @@ export default function PatientDashboard() {
         )}
       </AnimatePresence>
 
-      {/* Pause Toggle Modal */}
-      <AnimatePresence>
-        {showPauseModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowPauseModal(false)}>
-            <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }}
-              onClick={(e) => e.stopPropagation()} className="glass-card-elevated p-8 rounded-3xl w-full max-w-md text-center">
-              <div className="w-20 h-20 rounded-3xl bg-warning/20 flex items-center justify-center mx-auto mb-6">
-                <Pause className="w-10 h-10 text-warning" />
-              </div>
-              <h2 className="text-2xl font-display font-bold mb-2">
-                {getArchStatus(selectedArch) === 'pausado' ? 'Retomar Tratamento' : 'Pausar Tratamento'}
-              </h2>
-              <p className="text-muted-foreground mb-6">
-                {getArchStatus(selectedArch) === 'pausado' 
-                  ? `Deseja retomar o tratamento da arcada ${selectedArch === 'upper' ? 'superior' : 'inferior'}?`
-                  : `Deseja pausar o tratamento da arcada ${selectedArch === 'upper' ? 'superior' : 'inferior'}? A outra arcada continuará normalmente.`
-                }
-              </p>
-              <div className="flex gap-3">
-                <Button variant="secondary" className="flex-1" onClick={() => setShowPauseModal(false)}>Cancelar</Button>
-                <Button variant="accent" className="flex-1" onClick={handlePauseToggle} disabled={isConfirming}>
-                  {isConfirming ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Check className="w-5 h-5" /> Confirmar</>}
-                </Button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Pause Reason Modal */}
+      <PauseReasonModal
+        isOpen={showPauseModal && getArchStatus(selectedArch) !== 'pausado'}
+        onClose={() => setShowPauseModal(false)}
+        onConfirm={handlePauseWithReason}
+        arch={selectedArch}
+        isLoading={isConfirming}
+      />
     </div>
   );
 }

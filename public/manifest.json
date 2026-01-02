@@ -1,6 +1,6 @@
 {
-  "name": "OrthoAlign",
-  "short_name": "OrthoAlign",
+  "name": "StelleAlign",
+  "short_name": "StelleAlign",
   "description": "Sistema de gestão de alinhadores ortodônticos invisíveis",
   "start_url": "/",
   "display": "standalone",

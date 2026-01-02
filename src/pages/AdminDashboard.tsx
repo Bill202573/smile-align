@@ -9,7 +9,7 @@ import { TreatmentHistoryModal } from '@/components/dentist/TreatmentHistoryModa
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import logo from '@/assets/logo.jpg';
+import logo from '@/assets/logo.png';
 import { format, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -185,9 +185,9 @@ export default function AdminDashboard() {
       <header className="glass-card sticky top-0 z-50 border-b">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="Logo" className="w-10 h-10 rounded-xl object-cover" />
+            <img src={logo} alt="StelleAlign" className="w-10 h-10 object-contain" />
             <div>
-              <h1 className="font-semibold text-foreground">OrthoAlign</h1>
+              <h1 className="font-semibold text-foreground">StelleAlign</h1>
               <p className="text-xs text-muted-foreground">Admin: {user?.name}</p>
             </div>
           </div>

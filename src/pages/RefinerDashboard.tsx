@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
-  Smile,
   LogOut,
   Package,
   Clock,
@@ -13,6 +12,7 @@ import {
   ChevronRight,
   Sparkles,
 } from 'lucide-react';
+import logo from '@/assets/logo.png';
 
 const mockItems = [
   { id: '1', patientName: 'Maria Silva', alignerCount: 6, status: 'received', receivedAt: '2024-12-20', value: 180 },
@@ -41,11 +41,9 @@ export default function RefinerDashboard() {
       <header className="glass-card sticky top-0 z-50 border-b">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl gradient-hero flex items-center justify-center">
-              <Smile className="w-5 h-5 text-white" />
-            </div>
+            <img src={logo} alt="StelleAlign" className="w-10 h-10 object-contain" />
             <div>
-              <h1 className="font-semibold text-foreground">OrthoAlign</h1>
+              <h1 className="font-semibold text-foreground">StelleAlign</h1>
               <p className="text-xs text-muted-foreground">Refinador: {user?.name}</p>
             </div>
           </div>

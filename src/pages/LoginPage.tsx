@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UserRole } from '@/types';
 import { 
-  Smile, 
   Mail, 
   Lock, 
   ArrowRight, 
@@ -16,8 +15,10 @@ import {
   Shield, 
   Sparkles,
   ChevronLeft,
-  UserPlus
+  UserPlus,
+  Smile
 } from 'lucide-react';
+import logo from '@/assets/logo.png';
 
 const roleConfig: Record<UserRole, { icon: React.ElementType; label: string; description: string; color: string }> = {
   patient: { 
@@ -144,11 +145,9 @@ export default function LoginPage() {
           transition={{ duration: 0.5 }}
           className="text-center mb-10"
         >
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl gradient-hero mb-6 shadow-glow">
-            <Smile className="w-10 h-10 text-white" />
-          </div>
+          <img src={logo} alt="StelleAlign" className="w-20 h-20 mb-6" />
           <h1 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-2">
-            OrthoAlign
+            StelleAlign
           </h1>
           <p className="text-muted-foreground text-lg">
             Gestão de Alinhadores Invisíveis
@@ -356,7 +355,7 @@ export default function LoginPage() {
 
       {/* Footer */}
       <div className="py-6 text-center text-sm text-muted-foreground">
-        <p>© 2024 OrthoAlign. Todos os direitos reservados.</p>
+        <p>© 2026 StelleAlign. Todos os direitos reservados.</p>
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ import {
   Bell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import logo from '@/assets/logo.jpg';
+import logo from '@/assets/logo.png';
 
 type TabType = 'profile' | 'treatment' | 'history' | 'gallery' | 'notifications';
 

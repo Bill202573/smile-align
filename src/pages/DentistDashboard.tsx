@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -7,22 +7,24 @@ import { DeliveryModal } from '@/components/dentist/DeliveryModal';
 import { DeliveryHistoryModal } from '@/components/dentist/DeliveryHistoryModal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   LogOut,
   Users,
   Bell,
   Search,
-  Filter,
   User,
   Check,
   Clock,
   AlertTriangle,
-  ChevronRight,
   Plus,
   Package,
   History,
+  CheckCircle2,
 } from 'lucide-react';
 import logo from '@/assets/logo.jpg';
+import { format, addDays } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface PatientRow {
   id: string;
@@ -44,7 +46,14 @@ interface PatientRow {
   notes: string | null;
   provisional_password: string | null;
   process_number: string | null;
+  gender: 'male' | 'female' | null;
+  treatment_status: 'in_treatment' | 'completed';
+  estimated_completion_date: string | null;
 }
+
+type StatusFilter = 'all' | 'on-track' | 'delayed';
+type TreatmentFilter = 'all' | 'in_treatment' | 'completed';
+type DentistFilter = 'all' | string;
 
 export default function DentistDashboard() {
   const { user, logout } = useAuth();
@@ -56,10 +65,30 @@ export default function DentistDashboard() {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<PatientRow | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [treatmentFilter, setTreatmentFilter] = useState<TreatmentFilter>('all');
+  const [dentistFilter, setDentistFilter] = useState<DentistFilter>('all');
 
   useEffect(() => {
     fetchPatients();
   }, []);
+
+  // Get unique dentists for filter
+  const uniqueDentists = useMemo(() => {
+    const dentists = patients
+      .map(p => p.dentist_name)
+      .filter((name): name is string => !!name);
+    return [...new Set(dentists)];
+  }, [patients]);
+
+  // Calculate estimated completion date for a patient
+  const getEstimatedCompletion = (patient: PatientRow): Date | null => {
+    const maxAligners = Math.max(patient.upper_aligners, patient.lower_aligners);
+    if (maxAligners === 0) return null;
+    const startDate = new Date(patient.start_date);
+    const totalDays = maxAligners * patient.days_per_aligner + 15; // +15 days after last aligner
+    return addDays(startDate, totalDays);
+  };
 
   const fetchPatients = async () => {
     try {
@@ -94,9 +123,16 @@ export default function DentistDashboard() {
     'delayed': { label: 'Atenção', color: 'bg-destructive/20 text-destructive', icon: AlertTriangle },
   };
 
-  const filteredPatients = patients.filter(patient =>
-    patient.full_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPatients = patients.filter(patient => {
+    const matchesSearch = patient.full_name.toLowerCase().includes(searchTerm.toLowerCase());
+    const status = getPatientStatus(patient);
+    const matchesStatus = statusFilter === 'all' || status === statusFilter || 
+      (statusFilter === 'on-track' && status === 'on-track') ||
+      (statusFilter === 'delayed' && (status === 'delayed' || status === 'pending'));
+    const matchesTreatment = treatmentFilter === 'all' || patient.treatment_status === treatmentFilter;
+    const matchesDentist = dentistFilter === 'all' || patient.dentist_name === dentistFilter;
+    return matchesSearch && matchesStatus && matchesTreatment && matchesDentist;
+  });
 
   const handlePatientClick = (patient: PatientRow) => {
     setSelectedPatient(patient);
@@ -173,27 +209,69 @@ export default function DentistDashboard() {
           })}
         </div>
 
-        {/* Search and Filter */}
-        <div className="flex gap-3">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Buscar paciente..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-12 pl-12 pr-4 rounded-xl border-2 border-input bg-card text-sm focus:outline-none focus:border-primary"
-            />
+        {/* Search and Filters */}
+        <div className="space-y-3">
+          <div className="flex gap-3">
+            <div className="flex-1 relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Buscar paciente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-12 pl-12 pr-4 rounded-xl border-2 border-input bg-card text-sm focus:outline-none focus:border-primary"
+              />
+            </div>
           </div>
-          <Button variant="secondary" size="icon">
-            <Filter className="w-5 h-5" />
-          </Button>
+          
+          <div className="flex flex-wrap gap-2">
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="on-track">Em dia</SelectItem>
+                <SelectItem value="delayed">Atenção</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={treatmentFilter} onValueChange={(v) => setTreatmentFilter(v as TreatmentFilter)}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Tratamento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="in_treatment">Em tratamento</SelectItem>
+                <SelectItem value="completed">Finalizado</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {uniqueDentists.length > 0 && (
+              <Select value={dentistFilter} onValueChange={(v) => setDentistFilter(v as DentistFilter)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Dentista" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos dentistas</SelectItem>
+                  {uniqueDentists.map((name) => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
         </div>
 
         {/* Patient List */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-display font-bold">Meus Pacientes</h2>
+            <div>
+              <h2 className="text-xl font-display font-bold">Meus Pacientes</h2>
+              <p className="text-sm text-muted-foreground">
+                Previsão de conclusão baseada no último alinhador + 15 dias
+              </p>
+            </div>
             <Button variant="gradient" onClick={handleNewPatient}>
               <Plus className="w-4 h-4" />
               Novo Paciente
@@ -214,6 +292,9 @@ export default function DentistDashboard() {
                 const currentTotal = patient.current_upper_aligner + patient.current_lower_aligner;
                 const progress = totalAligners > 0 ? Math.round((currentTotal / totalAligners) * 100) : 0;
 
+                const estimatedDate = getEstimatedCompletion(patient);
+                const isCompleted = patient.treatment_status === 'completed';
+
                 return (
                   <motion.div
                     key={patient.id}
@@ -231,14 +312,25 @@ export default function DentistDashboard() {
                         </div>
                         
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-foreground hover:text-primary transition-colors">
-                            {patient.full_name}
-                          </h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-foreground hover:text-primary transition-colors">
+                              {patient.full_name}
+                            </h3>
+                            {isCompleted && (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/20 text-success flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3" />
+                                Finalizado
+                              </span>
+                            )}
+                          </div>
                           {patient.process_number && (
                             <p className="text-xs text-muted-foreground">Processo: {patient.process_number}</p>
                           )}
                           <p className="text-sm text-muted-foreground mt-1">
                             Sup: {patient.current_upper_aligner}/{patient.upper_aligners} • Inf: {patient.current_lower_aligner}/{patient.lower_aligners}
+                            {estimatedDate && !isCompleted && (
+                              <span className="ml-2">• Previsão: {format(estimatedDate, 'dd/MM/yyyy', { locale: ptBR })}</span>
+                            )}
                           </p>
                         </div>
                       </div>
@@ -258,10 +350,12 @@ export default function DentistDashboard() {
                           {progress}%
                         </span>
 
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1 ${config.color}`}>
-                          <StatusIcon className="w-3 h-3" />
-                          {config.label}
-                        </span>
+                        {!isCompleted && (
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1 ${config.color}`}>
+                            <StatusIcon className="w-3 h-3" />
+                            {config.label}
+                          </span>
+                        )}
 
                         <div className="flex items-center gap-1">
                           <Button 

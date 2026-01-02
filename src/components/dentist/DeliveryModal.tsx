@@ -1,12 +1,28 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Package, ArrowUp, ArrowDown, Check } from 'lucide-react';
+import { X, Package, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+// Componente SVG para arcada superior
+const UpperArchIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth="2">
+    <path d="M4 16C4 10 8 6 12 6C16 6 20 10 20 16" strokeLinecap="round" />
+    <path d="M6 14C6 11 9 8 12 8C15 8 18 11 18 14" strokeLinecap="round" />
+  </svg>
+);
+
+// Componente SVG para arcada inferior
+const LowerArchIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth="2">
+    <path d="M4 8C4 14 8 18 12 18C16 18 20 14 20 8" strokeLinecap="round" />
+    <path d="M6 10C6 13 9 16 12 16C15 16 18 13 18 10" strokeLinecap="round" />
+  </svg>
+);
 
 interface DeliveryModalProps {
   isOpen: boolean;
@@ -35,6 +51,8 @@ export function DeliveryModal({
     upper_to: 0,
     lower_from: 0,
     lower_to: 0,
+    upper_retainer_qty: 0,
+    lower_retainer_qty: 0,
     notes: '',
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -55,6 +73,8 @@ export function DeliveryModal({
           upper_to: formData.upper_to,
           lower_from: formData.lower_from,
           lower_to: formData.lower_to,
+          upper_retainer_qty: formData.upper_retainer_qty,
+          lower_retainer_qty: formData.lower_retainer_qty,
           delivered_by: isValidUUID ? dentistId : null,
           notes: formData.notes || null,
         });
@@ -122,12 +142,12 @@ export function DeliveryModal({
             </Button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Upper Aligners */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <ArrowUp className="w-4 h-4 text-primary" />
+                  <UpperArchIcon className="w-5 h-5 text-primary" />
                 </div>
                 <Label className="font-semibold">Alinhadores Superiores</Label>
               </div>
@@ -158,7 +178,7 @@ export function DeliveryModal({
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                  <ArrowDown className="w-4 h-4 text-accent" />
+                  <LowerArchIcon className="w-5 h-5 text-accent" />
                 </div>
                 <Label className="font-semibold">Alinhadores Inferiores</Label>
               </div>
@@ -185,6 +205,37 @@ export function DeliveryModal({
               </div>
             </div>
 
+            {/* Retainers (Contenções) */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
+                  <Shield className="w-4 h-4 text-success" />
+                </div>
+                <Label className="font-semibold">Contenções</Label>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 pl-10">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Superior (Qtd)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={formData.upper_retainer_qty}
+                    onChange={(e) => handleChange('upper_retainer_qty', parseInt(e.target.value) || 0)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Inferior (Qtd)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={formData.lower_retainer_qty}
+                    onChange={(e) => handleChange('lower_retainer_qty', parseInt(e.target.value) || 0)}
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Summary */}
             <div className="p-4 bg-muted rounded-xl">
               <p className="text-sm text-muted-foreground mb-2">Resumo da entrega:</p>
@@ -203,6 +254,13 @@ export function DeliveryModal({
                     <span className="text-muted-foreground ml-1">
                       ({formData.lower_to - formData.lower_from + 1} alinhadores)
                     </span>
+                  </p>
+                )}
+                {(formData.upper_retainer_qty > 0 || formData.lower_retainer_qty > 0) && (
+                  <p className="font-medium text-success">
+                    Contenções: {formData.upper_retainer_qty > 0 && `${formData.upper_retainer_qty} sup.`}
+                    {formData.upper_retainer_qty > 0 && formData.lower_retainer_qty > 0 && ' • '}
+                    {formData.lower_retainer_qty > 0 && `${formData.lower_retainer_qty} inf.`}
                   </p>
                 )}
               </div>

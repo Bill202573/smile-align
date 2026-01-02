@@ -1,8 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Package, Calendar, ArrowUp, ArrowDown } from 'lucide-react';
+import { X, Package, Calendar, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+
+// Componente SVG para arcada superior
+const UpperArchIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth="2">
+    <path d="M4 16C4 10 8 6 12 6C16 6 20 10 20 16" strokeLinecap="round" />
+    <path d="M6 14C6 11 9 8 12 8C15 8 18 11 18 14" strokeLinecap="round" />
+  </svg>
+);
+
+// Componente SVG para arcada inferior
+const LowerArchIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth="2">
+    <path d="M4 8C4 14 8 18 12 18C16 18 20 14 20 8" strokeLinecap="round" />
+    <path d="M6 10C6 13 9 16 12 16C15 16 18 13 18 10" strokeLinecap="round" />
+  </svg>
+);
 
 interface Delivery {
   id: string;
@@ -10,6 +26,8 @@ interface Delivery {
   upper_to: number;
   lower_from: number;
   lower_to: number;
+  upper_retainer_qty: number;
+  lower_retainer_qty: number;
   delivered_at: string;
   notes: string | null;
 }
@@ -116,7 +134,7 @@ export function DeliveryHistoryModal({
                   <div className="space-y-2">
                     {delivery.upper_to > 0 && (
                       <div className="flex items-center gap-2">
-                        <ArrowUp className="w-4 h-4 text-primary" />
+                        <UpperArchIcon className="w-4 h-4 text-primary" />
                         <span className="text-sm font-medium">
                           Superior: {delivery.upper_from} → {delivery.upper_to}
                         </span>
@@ -124,9 +142,19 @@ export function DeliveryHistoryModal({
                     )}
                     {delivery.lower_to > 0 && (
                       <div className="flex items-center gap-2">
-                        <ArrowDown className="w-4 h-4 text-accent" />
+                        <LowerArchIcon className="w-4 h-4 text-accent" />
                         <span className="text-sm font-medium">
                           Inferior: {delivery.lower_from} → {delivery.lower_to}
+                        </span>
+                      </div>
+                    )}
+                    {(delivery.upper_retainer_qty > 0 || delivery.lower_retainer_qty > 0) && (
+                      <div className="flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-success" />
+                        <span className="text-sm font-medium text-success">
+                          Contenções: {delivery.upper_retainer_qty > 0 && `${delivery.upper_retainer_qty} sup.`}
+                          {delivery.upper_retainer_qty > 0 && delivery.lower_retainer_qty > 0 && ' • '}
+                          {delivery.lower_retainer_qty > 0 && `${delivery.lower_retainer_qty} inf.`}
                         </span>
                       </div>
                     )}

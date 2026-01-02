@@ -58,10 +58,12 @@ export type Database = {
           delivered_by: string | null
           id: string
           lower_from: number
+          lower_retainer_qty: number | null
           lower_to: number
           notes: string | null
           patient_id: string
           upper_from: number
+          upper_retainer_qty: number | null
           upper_to: number
         }
         Insert: {
@@ -69,10 +71,12 @@ export type Database = {
           delivered_by?: string | null
           id?: string
           lower_from?: number
+          lower_retainer_qty?: number | null
           lower_to?: number
           notes?: string | null
           patient_id: string
           upper_from?: number
+          upper_retainer_qty?: number | null
           upper_to?: number
         }
         Update: {
@@ -80,10 +84,12 @@ export type Database = {
           delivered_by?: string | null
           id?: string
           lower_from?: number
+          lower_retainer_qty?: number | null
           lower_to?: number
           notes?: string | null
           patient_id?: string
           upper_from?: number
+          upper_retainer_qty?: number | null
           upper_to?: number
         }
         Relationships: [
@@ -115,6 +121,7 @@ export type Database = {
           lower_aligners: number
           notes: string | null
           phone: string
+          process_number: string | null
           provisional_password: string | null
           start_date: string
           updated_at: string
@@ -138,6 +145,7 @@ export type Database = {
           lower_aligners?: number
           notes?: string | null
           phone: string
+          process_number?: string | null
           provisional_password?: string | null
           start_date?: string
           updated_at?: string
@@ -161,6 +169,7 @@ export type Database = {
           lower_aligners?: number
           notes?: string | null
           phone?: string
+          process_number?: string | null
           provisional_password?: string | null
           start_date?: string
           updated_at?: string

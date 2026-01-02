@@ -204,45 +204,45 @@ export default function AdminDashboard() {
                       className="glass-card p-5 rounded-2xl hover:shadow-lg transition-all cursor-pointer group"
                       onClick={() => handlePatientClick(patient)}
                     >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                          <User className="w-6 h-6 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-foreground truncate hover:text-primary transition-colors">
-                            {patient.full_name}
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            Sup: {patient.current_upper_aligner}/{patient.upper_aligners} • Inf: {patient.current_lower_aligner}/{patient.lower_aligners} • {patient.dentist_name || 'Sem dentista'}
-                          </p>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <div className="text-right mr-2">
-                            <div className="text-sm font-medium text-accent">{progress}%</div>
-                            <div className="text-xs text-muted-foreground">progresso</div>
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <User className="w-6 h-6 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-foreground truncate hover:text-primary transition-colors">
+                              {patient.full_name}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              Sup: {patient.current_upper_aligner}/{patient.upper_aligners} • Inf: {patient.current_lower_aligner}/{patient.lower_aligners} • {patient.dentist_name || 'Sem dentista'}
+                            </p>
                           </div>
                           
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button 
-                              variant="ghost" 
-                              size="icon-sm"
-                              onClick={(e) => handleDelivery(patient, e)}
-                              title="Registrar entrega"
-                            >
-                              <Package className="w-5 h-5" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon-sm"
-                              onClick={(e) => handleHistory(patient, e)}
-                              title="Histórico de entregas"
-                            >
-                              <History className="w-5 h-5" />
-                            </Button>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="text-right mr-2">
+                              <div className="text-sm font-medium text-accent">{progress}%</div>
+                              <div className="text-xs text-muted-foreground">progresso</div>
+                            </div>
+                            
+                            <div className="flex items-center gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="icon-sm"
+                                onClick={(e) => handleDelivery(patient, e)}
+                                title="Registrar entrega"
+                              >
+                                <Package className="w-5 h-5" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon-sm"
+                                onClick={(e) => handleHistory(patient, e)}
+                                title="Histórico de entregas"
+                              >
+                                <History className="w-5 h-5" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
                     </motion.div>
                   );
                 })}

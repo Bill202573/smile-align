@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Mail, Phone, MapPin, Calendar, Key, Copy, Check, RefreshCw, Stethoscope } from 'lucide-react';
+import { X, User, Mail, Phone, MapPin, Calendar, Key, Copy, Check, RefreshCw, Stethoscope, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RefiningFormSection } from './RefiningFormSection';
+import { PatientHistoryTab } from './PatientHistoryTab';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -216,15 +217,24 @@ export function PatientFormModal({
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsList className={`grid w-full ${isEditing ? 'grid-cols-3' : 'grid-cols-2'} mb-4`}>
                 <TabsTrigger value="personal" className="flex items-center gap-2">
                   <User className="w-4 h-4" />
-                  Dados Pessoais
+                  <span className="hidden sm:inline">Dados Pessoais</span>
+                  <span className="sm:hidden">Pessoais</span>
                 </TabsTrigger>
                 <TabsTrigger value="treatment" className="flex items-center gap-2">
                   <Stethoscope className="w-4 h-4" />
-                  Tratamento
+                  <span className="hidden sm:inline">Tratamento</span>
+                  <span className="sm:hidden">Tratam.</span>
                 </TabsTrigger>
+                {isEditing && (
+                  <TabsTrigger value="history" className="flex items-center gap-2">
+                    <History className="w-4 h-4" />
+                    <span className="hidden sm:inline">Histórico</span>
+                    <span className="sm:hidden">Hist.</span>
+                  </TabsTrigger>
+                )}
               </TabsList>
 
               <TabsContent value="personal" className="space-y-6 mt-0">
@@ -452,6 +462,12 @@ export function PatientFormModal({
                   />
                 </div>
               </TabsContent>
+
+              {isEditing && (
+                <TabsContent value="history" className="mt-0">
+                  <PatientHistoryTab patientId={editPatient?.id} />
+                </TabsContent>
+              )}
             </Tabs>
 
             {/* Actions */}

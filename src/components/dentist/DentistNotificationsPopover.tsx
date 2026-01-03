@@ -30,23 +30,27 @@ export function DentistNotificationsPopover({ dentistId }: DentistNotificationsP
 
   useEffect(() => {
     if (dentistId) {
+      console.log('DentistNotificationsPopover: fetching for dentist:', dentistId);
       fetchNotifications();
+      
       // Set up realtime subscription
       const channel = supabase
-        .channel('dentist_notifications_changes')
+        .channel('dentist_notifications_realtime')
         .on(
           'postgres_changes',
           {
-            event: 'INSERT',
+            event: '*',
             schema: 'public',
             table: 'dentist_notifications',
-            filter: `dentist_id=eq.${dentistId}`,
           },
-          () => {
+          (payload) => {
+            console.log('Realtime notification received:', payload);
             fetchNotifications();
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Subscription status:', status);
+        });
 
       return () => {
         supabase.removeChannel(channel);
@@ -56,6 +60,7 @@ export function DentistNotificationsPopover({ dentistId }: DentistNotificationsP
 
   const fetchNotifications = async () => {
     try {
+      console.log('Fetching notifications for dentist:', dentistId);
       const { data, error } = await supabase
         .from('dentist_notifications')
         .select('*')
@@ -63,6 +68,7 @@ export function DentistNotificationsPopover({ dentistId }: DentistNotificationsP
         .eq('is_read', false)
         .order('created_at', { ascending: false });
 
+      console.log('Notifications result:', { data, error });
       if (error) throw error;
       setNotifications(data || []);
     } catch (error) {

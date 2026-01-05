@@ -170,6 +170,18 @@ export default function PatientDashboard() {
       }
       
       await supabase.from('patients').update(updateData).eq('id', patient.id);
+
+      // Notificar dentista sobre a troca de alinhador
+      if (patient.dentist_id) {
+        await supabase.from('dentist_notifications').insert({
+          dentist_id: patient.dentist_id,
+          patient_id: patient.id,
+          notification_id: crypto.randomUUID(),
+          title: `Troca de Alinhador - ${patient.full_name}`,
+          message: `Paciente ${patient.full_name} trocou para o alinhador ${newAlignerNumber} da arcada ${selectedArch === 'upper' ? 'superior' : 'inferior'}.`,
+        });
+      }
+
       fetchPatientData();
     } catch (error) {
       console.error('Error confirming change:', error);

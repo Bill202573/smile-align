@@ -30,7 +30,6 @@ export function DentistNotificationsPopover({ dentistId }: DentistNotificationsP
 
   useEffect(() => {
     if (dentistId) {
-      console.log('DentistNotificationsPopover: fetching for dentist:', dentistId);
       fetchNotifications();
       
       // Set up realtime subscription
@@ -43,14 +42,11 @@ export function DentistNotificationsPopover({ dentistId }: DentistNotificationsP
             schema: 'public',
             table: 'dentist_notifications',
           },
-          (payload) => {
-            console.log('Realtime notification received:', payload);
+          () => {
             fetchNotifications();
           }
         )
-        .subscribe((status) => {
-          console.log('Subscription status:', status);
-        });
+        .subscribe();
 
       return () => {
         supabase.removeChannel(channel);
@@ -60,7 +56,6 @@ export function DentistNotificationsPopover({ dentistId }: DentistNotificationsP
 
   const fetchNotifications = async () => {
     try {
-      console.log('Fetching notifications for dentist:', dentistId);
       const { data, error } = await supabase
         .from('dentist_notifications')
         .select('*')
@@ -68,7 +63,6 @@ export function DentistNotificationsPopover({ dentistId }: DentistNotificationsP
         .eq('is_read', false)
         .order('created_at', { ascending: false });
 
-      console.log('Notifications result:', { data, error });
       if (error) throw error;
       setNotifications(data || []);
     } catch (error) {
@@ -125,20 +119,24 @@ export function DentistNotificationsPopover({ dentistId }: DentistNotificationsP
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon-sm" className="relative">
+        <Button variant="ghost" size="icon-sm" className="relative" title="Notificações">
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full text-[10px] text-white flex items-center justify-center">
+            <motion.span 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="absolute -top-1 -right-1 w-5 h-5 bg-destructive rounded-full text-[11px] font-bold text-white flex items-center justify-center"
+            >
               {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
+            </motion.span>
           )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
-        <div className="p-3 border-b flex items-center justify-between">
+        <div className="p-3 border-b flex items-center justify-between bg-muted/30">
           <h3 className="font-semibold text-sm">Notificações</h3>
           {unreadCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={handleMarkAllAsRead} className="text-xs">
+            <Button variant="ghost" size="sm" onClick={handleMarkAllAsRead} className="text-xs h-7">
               Marcar todas como lidas
             </Button>
           )}
@@ -147,8 +145,11 @@ export function DentistNotificationsPopover({ dentistId }: DentistNotificationsP
         <div className="max-h-[400px] overflow-y-auto">
           {notifications.length === 0 ? (
             <div className="p-8 text-center">
-              <Inbox className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Nenhuma notificação</p>
+              <Inbox className="w-10 h-10 text-muted-foreground/50 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Nenhuma notificação pendente</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">
+                Você será notificado sobre ações dos pacientes
+              </p>
             </div>
           ) : (
             <div className="divide-y">
@@ -162,7 +163,7 @@ export function DentistNotificationsPopover({ dentistId }: DentistNotificationsP
                     className="p-3 hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
                         <User className="w-4 h-4 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -181,12 +182,13 @@ export function DentistNotificationsPopover({ dentistId }: DentistNotificationsP
                         size="icon-sm"
                         onClick={() => handleMarkAsRead(notification.id)}
                         disabled={loadingId === notification.id}
-                        className="flex-shrink-0"
+                        className="flex-shrink-0 h-8 w-8"
+                        title="Estou ciente"
                       >
                         {loadingId === notification.id ? (
                           <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                         ) : (
-                          <Check className="w-3 h-3" />
+                          <Check className="w-4 h-4" />
                         )}
                       </Button>
                     </div>

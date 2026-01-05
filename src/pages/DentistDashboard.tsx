@@ -371,34 +371,6 @@ export default function DentistDashboard() {
 
         {mainTab === 'patients' && (
           <>
-            {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {[
-            { label: 'Pacientes', value: patients.length, icon: Users, color: 'bg-primary/10 text-primary' },
-            { label: 'Em tratamento', value: patientsInTreatment, icon: Clock, color: 'bg-primary/10 text-primary' },
-            { label: 'Finalizados', value: patientsCompleted, icon: CheckCircle2, color: 'bg-success/10 text-success' },
-            { label: 'Em refino', value: patientsRefining, icon: RefreshCw, color: 'bg-accent/10 text-accent' },
-            { label: 'Atenção', value: patientsNeedingAttention, icon: AlertTriangle, color: 'bg-destructive/10 text-destructive' },
-          ].map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="glass-card p-3 rounded-2xl text-center"
-              >
-                <div className={`w-8 h-8 rounded-xl ${stat.color} flex items-center justify-center mx-auto mb-2`}>
-                  <Icon className="w-4 h-4" />
-                </div>
-                <p className="text-xl font-display font-bold">{stat.value}</p>
-                <p className="text-[10px] text-muted-foreground">{stat.label}</p>
-              </motion.div>
-            );
-          })}
-        </div>
-
         {/* Search and Filters */}
         <div className="space-y-3">
           <div className="flex gap-3">

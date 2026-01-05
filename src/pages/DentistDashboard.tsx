@@ -10,11 +10,12 @@ import { ReleasePauseModal } from '@/components/dentist/ReleasePauseModal';
 import { CommunicationsTab } from '@/components/dentist/CommunicationsTab';
 import { DentistNotificationsSection } from '@/components/dentist/DentistNotificationsSection';
 import { DentistNotificationsPopover } from '@/components/dentist/DentistNotificationsPopover';
+import { DentistSidebar, DentistTabType } from '@/components/dentist/DentistSidebar';
+import { DashboardStats } from '@/components/dentist/DashboardStats';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  LogOut,
   Users,
   Search,
   User,
@@ -30,9 +31,9 @@ import {
   Play,
   ArrowUp,
   ArrowDown,
-  MessageSquare,
+  Menu,
 } from 'lucide-react';
-import logo from '@/assets/logo.png';
+
 import { format, addDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -80,12 +81,11 @@ interface PausedArchInfo {
 type StatusFilter = 'all' | 'on-track' | 'delayed';
 type TreatmentFilter = 'all' | 'in_treatment' | 'completed' | 'refino';
 type DentistFilter = 'all' | string;
-type MainTab = 'patients' | 'communications';
-
 export default function DentistDashboard() {
   const { user, logout } = useAuth();
   
-  const [mainTab, setMainTab] = useState<MainTab>('patients');
+  const [mainTab, setMainTab] = useState<DentistTabType>('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [patients, setPatients] = useState<PatientRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
@@ -307,62 +307,67 @@ export default function DentistDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="glass-card sticky top-0 z-50 border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src={logo} alt="StelleAlign" className="w-10 h-10 object-contain" />
-            <div>
-              <h1 className="font-semibold text-foreground">StelleAlign</h1>
-              <p className="text-xs text-muted-foreground">{user?.name}</p>
+    <div className="min-h-screen bg-background flex w-full">
+      {/* Sidebar */}
+      <DentistSidebar
+        activeTab={mainTab}
+        onTabChange={setMainTab}
+        isOpen={isSidebarOpen}
+        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+        userName={user?.name}
+        onLogout={logout}
+      />
+
+      {/* Main Content */}
+      <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'lg:ml-[280px]' : ''}`}>
+        {/* Header */}
+        <header className="glass-card sticky top-0 z-40 border-b">
+          <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {!isSidebarOpen && (
+                <Button 
+                  variant="ghost" 
+                  size="icon-sm" 
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="lg:hidden"
+                >
+                  <Menu className="w-5 h-5" />
+                </Button>
+              )}
+              <h1 className="font-semibold text-foreground text-lg">
+                {mainTab === 'dashboard' && 'Dashboard'}
+                {mainTab === 'patients' && 'Pacientes'}
+                {mainTab === 'communications' && 'Comunicados'}
+              </h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <DentistNotificationsPopover dentistId={user?.id || ''} />
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <DentistNotificationsPopover dentistId={user?.id || ''} />
-            <Button variant="ghost" size="icon-sm" onClick={logout}>
-              <LogOut className="w-5 h-5" />
-            </Button>
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Tabs */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => setMainTab('patients')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${
-              mainTab === 'patients'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            Pacientes
-          </button>
-          <button
-            onClick={() => setMainTab('communications')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${
-              mainTab === 'communications'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <MessageSquare className="w-4 h-4" />
-            Comunicados
-          </button>
-        </div>
+        <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+          {/* Dashboard Tab */}
+          {mainTab === 'dashboard' && (
+            <DashboardStats
+              totalPatients={patients.length}
+              patientsInTreatment={patientsInTreatment}
+              patientsCompleted={patientsCompleted}
+              patientsRefining={patientsRefining}
+              patientsNeedingAttention={patientsNeedingAttention}
+            />
+          )}
 
-        {mainTab === 'communications' && (
-          <div className="space-y-6">
-            {/* Confirmações de recebimento dos pacientes */}
-            <DentistNotificationsSection />
-            
-            {/* Comunicados enviados */}
-            <CommunicationsTab />
-          </div>
-        )}
+          {/* Communications Tab */}
+          {mainTab === 'communications' && (
+            <div className="space-y-6">
+              {/* Confirmações de recebimento dos pacientes */}
+              <DentistNotificationsSection />
+              
+              {/* Comunicados enviados */}
+              <CommunicationsTab />
+            </div>
+          )}
 
         {mainTab === 'patients' && (
           <>
@@ -652,7 +657,8 @@ export default function DentistDashboard() {
         </div>
           </>
         )}
-      </main>
+        </main>
+      </div>
 
       {/* Modals */}
       <PatientFormModal

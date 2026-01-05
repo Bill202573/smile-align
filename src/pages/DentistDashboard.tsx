@@ -627,6 +627,15 @@ export default function DentistDashboard() {
                             onClick={(e) => handleDeliveryHistory(patient, e)}
                             title="Histórico de entregas"
                           >
+                            <Package className="w-3 h-3" />
+                            <Clock className="w-3 h-3" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon-sm"
+                            onClick={(e) => handleTreatmentHistory(patient, e)}
+                            title="Histórico do tratamento"
+                          >
                             <History className="w-4 h-4" />
                           </Button>
                         </div>

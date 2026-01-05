@@ -614,6 +614,7 @@ export default function DentistDashboard() {
 
                         <div className="flex items-center gap-1">
                           <Button 
+                            type="button"
                             variant="ghost" 
                             size="icon-sm"
                             onClick={(e) => handleDelivery(patient, e)}
@@ -622,6 +623,7 @@ export default function DentistDashboard() {
                             <Package className="w-4 h-4" />
                           </Button>
                           <Button 
+                            type="button"
                             variant="ghost" 
                             size="icon-sm"
                             onClick={(e) => handleDeliveryHistory(patient, e)}
@@ -631,6 +633,7 @@ export default function DentistDashboard() {
                             <Clock className="w-3 h-3" />
                           </Button>
                           <Button 
+                            type="button"
                             variant="ghost" 
                             size="icon-sm"
                             onClick={(e) => handleTreatmentHistory(patient, e)}
